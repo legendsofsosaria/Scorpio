@@ -94,7 +94,6 @@ void Load()
 	if (pCactusObst == NULL)
 		std::cout << "cactus obstacle failed to load: " << cactusObst << std::endl;
 
-
 	//location to copy enemy from texture
 	enemySpriteSrc.x = 0;
 	enemySpriteSrc.y = 0;
@@ -127,9 +126,34 @@ void Load()
 
 	//describe location to paste player onto the screen
 	playerSpriteDst.x = 100;
-	playerSpriteDst.y = 370;
-	playerSpriteDst.w = 180;
-	playerSpriteDst.h = 166;
+	playerSpriteDst.y = 432;
+	playerSpriteDst.w = playerSpriteSrc.w;
+	playerSpriteDst.h = playerSpriteSrc.h;
+
+	//location to copy player projectile from texture
+	playerProjSrc.x = 0;
+	playerProjSrc.y = 0;
+	playerProjSrc.w = 233;
+	playerProjSrc.h = 134;
+
+	//describe location to paste player projectile onto the screen
+	playerProjDst.x = playerSpriteDst.x + playerSpriteDst.w;
+	playerProjDst.y = playerSpriteDst.y + playerSpriteDst.h - (playerProjSrc.h / 4);
+	playerProjDst.w = playerProjSrc.w / 4;
+	playerProjDst.h = playerProjSrc.h / 4;
+
+	//location to copy cactus obstacle from texture
+	cactusObstSrc.x = 0;
+	cactusObstSrc.y = 0;
+	cactusObstSrc.w = 84;
+	cactusObstSrc.h = 249;
+
+	//describe location to paste cactus obstacle onto the screen
+	cactusObstDst.x = 600;
+	cactusObstDst.y = 383; //531 - cactusObstDst.h
+	cactusObstDst.w = cactusObstSrc.w;
+	cactusObstDst.h = cactusObstSrc.h - 100;
+
 }
 
 void Input()
@@ -151,6 +175,8 @@ void Draw()
 	SDL_RenderCopy(pRenderer, pEnemy, &enemySpriteSrc, &enemySpriteDst);
 	SDL_RenderCopy(pRenderer, pEnemyProj, &enemyProjSrc, &enemyProjDst);
 	SDL_RenderCopy(pRenderer, pPlayer, &playerSpriteSrc, &playerSpriteDst);
+	SDL_RenderCopy(pRenderer, pPlayerProj, &playerProjSrc, &playerProjDst);
+	SDL_RenderCopy(pRenderer, pCactusObst, &cactusObstSrc, &cactusObstDst);
 	//Show the hidden space we were drawing to called the backbuffer.
 	SDL_RenderPresent(pRenderer); 
 }
