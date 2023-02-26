@@ -150,7 +150,7 @@ void Load()
 
 	//describe location to paste cactus obstacle onto the screen
 	cactusObstDst.x = 600;
-	cactusObstDst.y = 383; //531 - cactusObstDst.h
+	cactusObstDst.y = 383; //531 - cactusObstDst.h 
 	cactusObstDst.w = cactusObstSrc.w;
 	cactusObstDst.h = cactusObstSrc.h - 100;
 
