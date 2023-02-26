@@ -21,11 +21,20 @@ SDL_Renderer* pRenderer = nullptr;
 SDL_Texture* pMyBackground = nullptr; //Background texture
 SDL_Texture* pEnemy = nullptr; //Enemy Texture
 SDL_Texture* pEnemyProj = nullptr; // Enemy Projectile texture
+SDL_Texture* pPlayer = nullptr;//Player tecture
+SDL_Texture* pPlayerProj = nullptr;//Player projectile texture
+SDL_Texture* pCactusObst = nullptr;//Castus obstacle texture
 
 SDL_Rect enemySpriteDst;
 SDL_Rect enemySpriteSrc;
 SDL_Rect enemyProjDst;
 SDL_Rect enemyProjSrc;
+SDL_Rect playerSpriteSrc;
+SDL_Rect playerSpriteDst;
+SDL_Rect playerProjSrc;
+SDL_Rect playerProjDst;
+SDL_Rect cactusObstSrc;
+SDL_Rect cactusObstDst;
 
 //Initialize opens a window and sets up renderer
 bool Init()
@@ -60,10 +69,16 @@ void Load()
 	char* background = "../Assets/textures/background.bmp";
 	char* enemy = "../Assets/textures/Scorpion_walk_sheet.gif";
 	char* enemyProj = "../Assets/textures/PoisonProjectile.png";
+	char* player = "../Assets/textures/charsprite.png";
+	char* playerProj = "../Assets/textures/playerprojectile.png";
+	char* cactusObst = "../Assets/textures/cactus1_00.png";
 
 	pMyBackground = IMG_LoadTexture(pRenderer, background);
 	pEnemy = IMG_LoadTexture(pRenderer, enemy);
 	pEnemyProj = IMG_LoadTexture(pRenderer, enemyProj);
+	pPlayer = IMG_LoadTexture(pRenderer, player);
+	pPlayerProj = IMG_LoadTexture(pRenderer, playerProj);
+	pCactusObst = IMG_LoadTexture(pRenderer, cactusObst);
 
 	//null checks for sanity
 	if (pMyBackground == NULL)
@@ -72,6 +87,13 @@ void Load()
 		std::cout << "enemy image failed to load: " << enemy << std::endl;
 	if (pEnemyProj == NULL)
 		std::cout << "enemy projectile image failed to load: " << enemyProj << std::endl;
+	if (pPlayer == NULL)
+		std::cout << "player image failed to load: " << player << std::endl;
+	if (pPlayerProj == NULL)
+		std::cout << "enemy projectile image failed to load: " << playerProj << std::endl;
+	if (pCactusObst == NULL)
+		std::cout << "cactus obstacle failed to load: " << cactusObst << std::endl;
+
 
 	//location to copy enemy from texture
 	enemySpriteSrc.x = 0;
@@ -96,6 +118,18 @@ void Load()
 	enemyProjDst.h = 37;
 	enemyProjDst.x = 970;
 	enemyProjDst.y = 500;
+
+	//location to copy player from texture
+	playerSpriteSrc.x = 15;
+	playerSpriteSrc.y = 12;
+	playerSpriteSrc.w = 130;
+	playerSpriteSrc.h = 100;
+
+	//describe location to paste player onto the screen
+	playerSpriteDst.x = 100;
+	playerSpriteDst.y = 370;
+	playerSpriteDst.w = 180;
+	playerSpriteDst.h = 166;
 }
 
 void Input()
@@ -116,6 +150,7 @@ void Draw()
 	SDL_RenderCopy(pRenderer, pMyBackground, NULL, NULL);
 	SDL_RenderCopy(pRenderer, pEnemy, &enemySpriteSrc, &enemySpriteDst);
 	SDL_RenderCopy(pRenderer, pEnemyProj, &enemyProjSrc, &enemyProjDst);
+	SDL_RenderCopy(pRenderer, pPlayer, &playerSpriteSrc, &playerSpriteDst);
 	//Show the hidden space we were drawing to called the backbuffer.
 	SDL_RenderPresent(pRenderer); 
 }
