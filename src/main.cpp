@@ -46,7 +46,7 @@ bool Init()
 	}
 	std::cout << "SDL Init Success\n";
 
-	pWindow = SDL_CreateWindow("Elizabeth Gress: 101465946 & ", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+	pWindow = SDL_CreateWindow("Elizabeth Gress: 101465946 & David Asher: 101448950", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
 	if (pWindow == NULL) //Error checking
