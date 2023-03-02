@@ -15,26 +15,57 @@ constexpr float DELAY_TIME = 1000.0f / FPS;
 const int SCREEN_WIDTH = 1200;
 const int SCREEN_HEIGHT = 600;
 bool isGameRunning = true;
-
 SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memory location which we can use later.
 SDL_Renderer* pRenderer = nullptr;
-SDL_Texture* pMyBackground = nullptr; //Background texture
-SDL_Texture* pEnemy = nullptr; //Enemy Texture
-SDL_Texture* pEnemyProj = nullptr; // Enemy Projectile texture
-SDL_Texture* pPlayer = nullptr;//Player tecture
-SDL_Texture* pPlayerProj = nullptr;//Player projectile texture
-SDL_Texture* pCactusObst = nullptr;//Castus obstacle texture
 
-SDL_Rect enemySpriteDst;
-SDL_Rect enemySpriteSrc;
-SDL_Rect enemyProjDst;
-SDL_Rect enemyProjSrc;
-SDL_Rect playerSpriteSrc;
-SDL_Rect playerSpriteDst;
-SDL_Rect playerProjSrc;
-SDL_Rect playerProjDst;
-SDL_Rect cactusObstSrc;
-SDL_Rect cactusObstDst;
+namespace Scorpio
+{
+	//Declaring a struct declares a new type of object we can make
+	//After we can make sprites that contain all the contained data fields and functions
+	struct Sprite
+	{
+		//Can be accessed from outside the struct or class
+	public:
+		//This is a constructor. It is a special type of function. The compiler knows it's a constructor because
+		//it's the same name as the class, and has no return type.
+		SDL_Texture* pTexture;
+		SDL_Rect src;
+		SDL_Rect dst;
+
+		Sprite()
+		{
+			pTexture = nullptr;
+			src = SDL_Rect{ 0,0,0,0 };
+			dst = SDL_Rect{ 0,0,0,0 };
+		}
+
+		Sprite(SDL_Renderer* renderer, const char* filePathToLoad)
+		{
+			src = SDL_Rect{ 0,0,0,0 };
+			
+			pTexture = IMG_LoadTexture(renderer, filePathToLoad);
+			if (pTexture == NULL)
+			{
+				std::cout << "image failed to load: " << SDL_GetError << std::endl;
+			}
+			SDL_QueryTexture(pTexture, NULL, NULL, &src.w, &src.h); //get dimensions of the texture
+			dst = SDL_Rect{ 0,0,src.w,src.h };
+		}
+
+		void Draw(SDL_Renderer* renderer)
+		{
+			SDL_RenderCopy(pRenderer, pTexture, &src, &dst);
+		}
+	};
+}
+
+Scorpio::Sprite playerSoldier;
+Scorpio::Sprite enemyScorpion;
+Scorpio::Sprite enemyPoison;
+Scorpio::Sprite playerBullet;
+Scorpio::Sprite desertBackground;
+Scorpio::Sprite cactus;
+
 
 //Initialize opens a window and sets up renderer
 bool Init()
@@ -73,86 +104,62 @@ void Load()
 	char* playerProj = "../Assets/textures/playerprojectile.png";
 	char* cactusObst = "../Assets/textures/cactus1_00.png";
 
-	pMyBackground = IMG_LoadTexture(pRenderer, background);
-	pEnemy = IMG_LoadTexture(pRenderer, enemy);
-	pEnemyProj = IMG_LoadTexture(pRenderer, enemyProj);
-	pPlayer = IMG_LoadTexture(pRenderer, player);
-	pPlayerProj = IMG_LoadTexture(pRenderer, playerProj);
-	pCactusObst = IMG_LoadTexture(pRenderer, cactusObst);
-
-	//null checks for sanity
-	if (pMyBackground == NULL)
-		std::cout << "background image failed to load: " << background << std::endl;
-	if (pEnemy == NULL)
-		std::cout << "enemy image failed to load: " << enemy << std::endl;
-	if (pEnemyProj == NULL)
-		std::cout << "enemy projectile image failed to load: " << enemyProj << std::endl;
-	if (pPlayer == NULL)
-		std::cout << "player image failed to load: " << player << std::endl;
-	if (pPlayerProj == NULL)
-		std::cout << "enemy projectile image failed to load: " << playerProj << std::endl;
-	if (pCactusObst == NULL)
-		std::cout << "cactus obstacle failed to load: " << cactusObst << std::endl;
+	desertBackground = Scorpio::Sprite(pRenderer, background);
+	enemyScorpion = Scorpio::Sprite(pRenderer, enemy);
+	enemyPoison = Scorpio::Sprite(pRenderer, enemyProj);
+	playerSoldier = Scorpio::Sprite(pRenderer, player);
+	playerBullet = Scorpio::Sprite(pRenderer, playerProj);
+	cactus = Scorpio::Sprite(pRenderer, cactusObst);
 
 	//location to copy enemy from texture
-	enemySpriteSrc.x = 0;
-	enemySpriteSrc.y = 0;
-	enemySpriteSrc.w = 144;
-	enemySpriteSrc.h = 133;
+	enemyScorpion.src.w = 144;
+	enemyScorpion.src.h = 133;
 
 	//describe location to paste enemy onto the screen
-	enemySpriteDst.w = 180;
-	enemySpriteDst.h = 166;
-	enemySpriteDst.x = 1000;
-	enemySpriteDst.y = 365;
+	enemyScorpion.dst.w = 180;
+	enemyScorpion.dst.h = 166;
+	enemyScorpion.dst.x = 1000;
+	enemyScorpion.dst.y = 365;
 
 	//location to copy enemy projectiles from texture
-	enemyProjSrc.x = 0;
-	enemyProjSrc.y = 0;
-	enemyProjSrc.w = 47;
-	enemyProjSrc.h = 37;
+	enemyPoison.src.w = 47;
+	enemyPoison.src.h = 37;
 
 	//describe location to paste enemy projectiles onto the screen
-	enemyProjDst.w = 47;
-	enemyProjDst.h = 37;
-	enemyProjDst.x = 970;
-	enemyProjDst.y = 500;
+	enemyPoison.dst.w = 47;
+	enemyPoison.dst.h = 37;
+	enemyPoison.dst.x = 970;
+	enemyPoison.dst.y = 500;
 
 	//location to copy player from texture
-	playerSpriteSrc.x = 15;
-	playerSpriteSrc.y = 12;
-	playerSpriteSrc.w = 130;
-	playerSpriteSrc.h = 100;
+	playerSoldier.src.x = 15;
+	playerSoldier.src.y = 12;
+	playerSoldier.src.w = 130;
+	playerSoldier.src.h = 100;
 
 	//describe location to paste player onto the screen
-	playerSpriteDst.x = 100;
-	playerSpriteDst.y = 432;
-	playerSpriteDst.w = playerSpriteSrc.w;
-	playerSpriteDst.h = playerSpriteSrc.h;
+	playerSoldier.dst.x = 100;
+	playerSoldier.dst.y = 432;
 
 	//location to copy player projectile from texture
-	playerProjSrc.x = 0;
-	playerProjSrc.y = 0;
-	playerProjSrc.w = 233;
-	playerProjSrc.h = 134;
+	playerBullet.src.w = 233;
+	playerBullet.src.h = 134;
 
 	//describe location to paste player projectile onto the screen
-	playerProjDst.x = playerSpriteDst.x + playerSpriteDst.w;
-	playerProjDst.y = playerSpriteDst.y + playerSpriteDst.h - (playerProjSrc.h / 4);
-	playerProjDst.w = playerProjSrc.w / 4;
-	playerProjDst.h = playerProjSrc.h / 4;
+	playerBullet.dst.x = playerSoldier.dst.x + playerSoldier.dst.w;
+	playerBullet.dst.y = playerSoldier.dst.y + playerSoldier.dst.h - (playerBullet.src.h / 4);
+	playerBullet.dst.w = playerBullet.src.w / 4;
+	playerBullet.dst.h = playerBullet.src.h / 4;
 
 	//location to copy cactus obstacle from texture
-	cactusObstSrc.x = 0;
-	cactusObstSrc.y = 0;
-	cactusObstSrc.w = 84;
-	cactusObstSrc.h = 249;
+	cactus.src.w = 84;
+	cactus.src.h = 249;
 
 	//describe location to paste cactus obstacle onto the screen
-	cactusObstDst.x = 600;
-	cactusObstDst.y = 383; //531 - cactusObstDst.h 
-	cactusObstDst.w = cactusObstSrc.w;
-	cactusObstDst.h = cactusObstSrc.h - 100;
+	cactus.dst.x = 600;
+	cactus.dst.y = 383; //531 - cactusObstDst.h 
+	cactus.dst.w = cactus.src.w;
+	cactus.dst.h = cactus.src.h - 100;
 
 }
 
@@ -168,17 +175,17 @@ void Update()
 }
 
 void Draw()
-{	
+{
 	SDL_SetRenderDrawColor(pRenderer, 5, 5, 15, 255);
 	SDL_RenderClear(pRenderer);
-	SDL_RenderCopy(pRenderer, pMyBackground, NULL, NULL);
-	SDL_RenderCopy(pRenderer, pEnemy, &enemySpriteSrc, &enemySpriteDst);
-	SDL_RenderCopy(pRenderer, pEnemyProj, &enemyProjSrc, &enemyProjDst);
-	SDL_RenderCopy(pRenderer, pPlayer, &playerSpriteSrc, &playerSpriteDst);
-	SDL_RenderCopy(pRenderer, pPlayerProj, &playerProjSrc, &playerProjDst);
-	SDL_RenderCopy(pRenderer, pCactusObst, &cactusObstSrc, &cactusObstDst);
+	desertBackground.Draw(pRenderer);
+	enemyScorpion.Draw(pRenderer);
+	enemyPoison.Draw(pRenderer);
+	playerSoldier.Draw(pRenderer);
+	playerBullet.Draw(pRenderer);
+	cactus.Draw(pRenderer);
 	//Show the hidden space we were drawing to called the backbuffer.
-	SDL_RenderPresent(pRenderer); 
+	SDL_RenderPresent(pRenderer);
 }
 
 /**
