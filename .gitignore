@@ -260,3 +260,5 @@ paket-files/
 __pycache__/
 *.pyc
 Scorpio/Intermediate/Debug/Scorpio.tlog/
+Scorpio/Intermediate/Debug/_IsIncrementalBuild
+Scorpio/Intermediate/Debug/Scorpio.exe.recipe
