@@ -111,6 +111,9 @@ void Load()
 	playerBullet = Scorpio::Sprite(pRenderer, playerProj);
 	cactus = Scorpio::Sprite(pRenderer, cactusObst);
 
+	desertBackground.dst.w = SCREEN_WIDTH;
+	desertBackground.dst.h = SCREEN_HEIGHT;
+
 	//location to copy enemy from texture
 	enemyScorpion.src.w = 144;
 	enemyScorpion.src.h = 133;
@@ -140,6 +143,8 @@ void Load()
 	//describe location to paste player onto the screen
 	playerSoldier.dst.x = 100;
 	playerSoldier.dst.y = 432;
+	playerSoldier.dst.w = playerSoldier.src.w;
+	playerSoldier.dst.h = playerSoldier.src.h;
 
 	//location to copy player projectile from texture
 	playerBullet.src.w = 233;
