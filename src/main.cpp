@@ -42,7 +42,7 @@ namespace Scorpio
 		Sprite(SDL_Renderer* renderer, const char* filePathToLoad)
 		{
 			src = SDL_Rect{ 0,0,0,0 };
-			
+
 			pTexture = IMG_LoadTexture(renderer, filePathToLoad);
 			if (pTexture == NULL)
 			{
@@ -55,6 +55,12 @@ namespace Scorpio
 		void Draw(SDL_Renderer* renderer)
 		{
 			SDL_RenderCopy(pRenderer, pTexture, &src, &dst);
+		}
+
+		void setPosition(int x, int y)
+		{
+			dst.x = x;
+			dst.y = y;
 		}
 	};
 }
@@ -124,16 +130,6 @@ void Load()
 	enemyScorpion.dst.x = 1000;
 	enemyScorpion.dst.y = 365;
 
-	//location to copy enemy projectiles from texture
-	enemyPoison.src.w = 47;
-	enemyPoison.src.h = 37;
-
-	//describe location to paste enemy projectiles onto the screen
-	enemyPoison.dst.w = 47;
-	enemyPoison.dst.h = 37;
-	enemyPoison.dst.x = 970;
-	enemyPoison.dst.y = 500;
-
 	//location to copy player from texture
 	playerSoldier.src.x = 15;
 	playerSoldier.src.y = 12;
@@ -146,37 +142,116 @@ void Load()
 	playerSoldier.dst.w = playerSoldier.src.w;
 	playerSoldier.dst.h = playerSoldier.src.h;
 
-	//location to copy player projectile from texture
-	playerBullet.src.w = 233;
-	playerBullet.src.h = 134;
-
-	//describe location to paste player projectile onto the screen
-	playerBullet.dst.x = playerSoldier.dst.x + playerSoldier.dst.w;
-	playerBullet.dst.y = playerSoldier.dst.y + playerSoldier.dst.h - (playerBullet.src.h / 4);
-	playerBullet.dst.w = playerBullet.src.w / 4;
-	playerBullet.dst.h = playerBullet.src.h / 4;
-
-	//location to copy cactus obstacle from texture
-	cactus.src.w = 84;
-	cactus.src.h = 249;
-
-	//describe location to paste cactus obstacle onto the screen
-	cactus.dst.x = 600;
-	cactus.dst.y = 383; //531 - cactusObstDst.h 
-	cactus.dst.w = cactus.src.w;
-	cactus.dst.h = cactus.src.h - 100;
-
 }
+//input variables
+bool isUpPressed = false;
+bool isDownPressed = false;
+bool isLeftPressed = false;
+bool isRightPressed = false;
+bool isSpacePressed = false;
 
 void Input()
 {
-
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) //poll until all events are handled
+	{
+		//decide what to do with this event
+		switch (event.type)
+		{
+			//Moving up and down and left and right with WASD. Note, this is probably pretty weird for our game to have up and down.
+			//I'm leaving it in here just to show we *can* do it, but this is likely something we will want to remove later.
+			case(SDL_KEYDOWN):
+			{
+				SDL_Scancode key = event.key.keysym.scancode;
+				switch (key)
+				{
+					case(SDL_SCANCODE_W):
+					{
+						isUpPressed = true;
+						break;
+					}
+					case(SDL_SCANCODE_S):
+					{
+						isDownPressed = true;
+						break;
+					}
+					case(SDL_SCANCODE_A):
+					{
+						isLeftPressed = true;
+						break;
+					}
+					case(SDL_SCANCODE_D):
+					{
+						isRightPressed = true;
+						break;
+					}
+					case(SDL_SCANCODE_SPACE):
+					{
+						isSpacePressed = true;
+						break;
+					}
+				}
+				break;
+			}
+			case (SDL_KEYUP):
+			{
+				SDL_Scancode key = event.key.keysym.scancode;
+				switch (key)
+				{
+					case(SDL_SCANCODE_W):
+					{
+						isUpPressed = false;
+						break;
+					}
+					case(SDL_SCANCODE_S):
+					{
+						isDownPressed = false;
+						break;
+					}
+					case(SDL_SCANCODE_A):
+					{
+						isLeftPressed = false;
+						break;
+					}
+					case(SDL_SCANCODE_D):
+					{
+						isRightPressed = false;
+						break;
+					}
+				}
+				break;
+			}
+			break;
+		}
+	}
 }
+
+//update your game state, draw the current frame
 
 void Update()
 {
-	//playerProjDst.x += 10; // Shooting the bullet at the enemy
-	//enemyProjDst.x -= 10; //Shooting the poison ball at the player
+	// Define screen boundaries
+	const int SCREEN_LEFT = 0;
+	const int SCREEN_RIGHT = SCREEN_WIDTH - playerSoldier.dst.w;
+	const int SCREEN_TOP = 0;
+	const int SCREEN_BOTTOM = SCREEN_HEIGHT - playerSoldier.dst.h;
+
+	if (isUpPressed && playerSoldier.dst.y > SCREEN_TOP)
+	{
+		playerSoldier.setPosition(playerSoldier.dst.x, playerSoldier.dst.y - 1);
+	}
+	if (isDownPressed && playerSoldier.dst.y < SCREEN_BOTTOM)
+	{
+		playerSoldier.setPosition(playerSoldier.dst.x, playerSoldier.dst.y + 1);
+	}
+	if (isLeftPressed && playerSoldier.dst.x > SCREEN_LEFT)
+	{
+		playerSoldier.setPosition(playerSoldier.dst.x - 1, playerSoldier.dst.y);
+	}
+	if (isRightPressed && playerSoldier.dst.x < SCREEN_RIGHT)
+	{
+		playerSoldier.setPosition(playerSoldier.dst.x + 1, playerSoldier.dst.y);
+	}
 }
 
 void Draw()
@@ -185,10 +260,7 @@ void Draw()
 	SDL_RenderClear(pRenderer);
 	desertBackground.Draw(pRenderer);
 	enemyScorpion.Draw(pRenderer);
-	enemyPoison.Draw(pRenderer);
 	playerSoldier.Draw(pRenderer);
-	playerBullet.Draw(pRenderer);
-	cactus.Draw(pRenderer);
 	//Show the hidden space we were drawing to called the backbuffer.
 	SDL_RenderPresent(pRenderer);
 }
