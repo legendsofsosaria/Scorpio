@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <SDL.h> //Allows us to use features of SDL Library
 #include <SDL_Image.h> 
+#include <vector> //std::vector is an array with variable size
 
 /*
 Use SDL to open window, render some sprites at given locations and scale
@@ -11,12 +12,14 @@ Use SDL to open window, render some sprites at given locations and scale
 
 //Global variables
 constexpr float FPS = 60.0f;
-constexpr float DELAY_TIME = 1000.0f / FPS;
+constexpr float DELAY_TIME = 1000.0f / FPS; // target deltaTime in ms
 const int SCREEN_WIDTH = 1200;
 const int SCREEN_HEIGHT = 600;
-bool isGameRunning = true;
+float deltaTime = 1.0f / FPS; //time passed between frames in secs
+
 SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memory location which we can use later.
 SDL_Renderer* pRenderer = nullptr;
+bool isGameRunning = true;
 
 namespace Scorpio
 {
@@ -65,13 +68,13 @@ namespace Scorpio
 	};
 }
 
+//Creating sprite objects
 Scorpio::Sprite playerSoldier;
 Scorpio::Sprite enemyScorpion;
 Scorpio::Sprite enemyPoison;
-Scorpio::Sprite playerBullet;
 Scorpio::Sprite desertBackground;
 Scorpio::Sprite cactus;
-
+std::vector<Scorpio::Sprite> playerBulletContainer; //std::vector is a class that allows changing size. This is a dynamic array of Scorpio::Sprite
 
 //Initialize opens a window and sets up renderer
 bool Init()
@@ -101,21 +104,14 @@ bool Init()
 	return true;
 }
 
+//Load textures to be displayed on the screen
 void Load()
 {
-	char* background = "../Assets/textures/background.bmp";
-	char* enemy = "../Assets/textures/Scorpion_walk_sheet.gif";
-	char* enemyProj = "../Assets/textures/PoisonProjectile.png";
-	char* player = "../Assets/textures/charsprite.png";
-	char* playerProj = "../Assets/textures/playerprojectile.png";
-	char* cactusObst = "../Assets/textures/cactus1_00.png";
-
-	desertBackground = Scorpio::Sprite(pRenderer, background);
-	enemyScorpion = Scorpio::Sprite(pRenderer, enemy);
-	enemyPoison = Scorpio::Sprite(pRenderer, enemyProj);
-	playerSoldier = Scorpio::Sprite(pRenderer, player);
-	playerBullet = Scorpio::Sprite(pRenderer, playerProj);
-	cactus = Scorpio::Sprite(pRenderer, cactusObst);
+	desertBackground = Scorpio::Sprite(pRenderer, "../Assets/textures/background.bmp");
+	enemyScorpion = Scorpio::Sprite(pRenderer, "../Assets/textures/Scorpion_walk_sheet.gif");
+	enemyPoison = Scorpio::Sprite(pRenderer, "../Assets/textures/PoisonProjectile.png");
+	playerSoldier = Scorpio::Sprite(pRenderer, "../Assets/textures/charsprite.png");
+	cactus = Scorpio::Sprite(pRenderer, "../Assets/textures/cactus1_00.png");
 
 	desertBackground.dst.w = SCREEN_WIDTH;
 	desertBackground.dst.h = SCREEN_HEIGHT;
@@ -143,14 +139,19 @@ void Load()
 	playerSoldier.dst.h = playerSoldier.src.h;
 
 }
+
 //input variables
 bool isUpPressed = false;
 bool isDownPressed = false;
 bool isLeftPressed = false;
 bool isRightPressed = false;
-bool isSpacePressed = false;
+bool isShootPressed = false;
+float playerMoveSpeedPxPerSec = 120.0f; //Pixels per second, px/sec * sec = px
+float playerFireRepeatDelaySec = 0.5f; //seconds
+float playerFireCooldownTimerSec = 0.0f; //seconds
+float bulletSpeed = 600.0f; //seconds
 
-void Input()
+void Input() //take player input
 {
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) //poll until all events are handled
@@ -187,7 +188,7 @@ void Input()
 					}
 					case(SDL_SCANCODE_SPACE):
 					{
-						isSpacePressed = true;
+						isShootPressed = true;
 						break;
 					}
 				}
@@ -218,6 +219,11 @@ void Input()
 						isRightPressed = false;
 						break;
 					}
+					case(SDL_SCANCODE_SPACE):
+					{
+						isShootPressed = false;
+						break;
+					}
 				}
 				break;
 			}
@@ -227,8 +233,7 @@ void Input()
 }
 
 //update your game state, draw the current frame
-
-void Update()
+void Update() // called every frame at FPS..FPS is declared at the top
 {
 	// Define screen boundaries
 	const int SCREEN_LEFT = 0;
@@ -238,28 +243,64 @@ void Update()
 
 	if (isUpPressed && playerSoldier.dst.y > SCREEN_TOP)
 	{
-		playerSoldier.setPosition(playerSoldier.dst.x, playerSoldier.dst.y - 1);
+		playerSoldier.dst.y -= playerMoveSpeedPxPerSec * deltaTime;
 	}
 	if (isDownPressed && playerSoldier.dst.y < SCREEN_BOTTOM)
 	{
-		playerSoldier.setPosition(playerSoldier.dst.x, playerSoldier.dst.y + 1);
+		playerSoldier.dst.y += playerMoveSpeedPxPerSec * deltaTime;
 	}
 	if (isLeftPressed && playerSoldier.dst.x > SCREEN_LEFT)
 	{
-		playerSoldier.setPosition(playerSoldier.dst.x - 1, playerSoldier.dst.y);
+		playerSoldier.dst.x -= playerMoveSpeedPxPerSec * deltaTime;
 	}
 	if (isRightPressed && playerSoldier.dst.x < SCREEN_RIGHT)
 	{
-		playerSoldier.setPosition(playerSoldier.dst.x + 1, playerSoldier.dst.y);
+		playerSoldier.dst.x += playerMoveSpeedPxPerSec * deltaTime;
+	}
+	if (isShootPressed && playerFireCooldownTimerSec < 0.0f)
+	{
+		//Create a new bullet
+		Scorpio::Sprite playerBullet = Scorpio::Sprite(pRenderer, "../Assets/textures/playerprojectile.png");
+		
+		//set bullet size to be displayed
+		playerBullet.dst.w = playerSoldier.src.w / 4;
+		playerBullet.dst.h = playerSoldier.src.h / 4;
+
+		//start bullet at player sprite position
+		playerBullet.dst.x = playerSoldier.dst.x + playerSoldier.dst.w;
+		playerBullet.dst.y = playerSoldier.dst.y + playerSoldier.dst.h * 0.7;
+		
+		//add bullet to container (to the end of the array)
+		playerBulletContainer.push_back(playerBullet);
+		
+		//reset cooldown
+		playerFireCooldownTimerSec = playerFireRepeatDelaySec;
+		
+	}
+	//tick down the time for our firing cooldown
+	playerFireCooldownTimerSec -= deltaTime;
+
+	//move all bullets on the screen
+	for (int i = 0; i <  playerBulletContainer.size(); i++)
+	{
+		//get a reference to the bullet in the container
+		Scorpio::Sprite* playerBullet = &playerBulletContainer[i];
+		playerBullet->dst.x += bulletSpeed * deltaTime;
 	}
 }
 
-void Draw()
+void Draw() // draw to screen to show new game state to player
 {
 	SDL_SetRenderDrawColor(pRenderer, 5, 5, 15, 255);
 	SDL_RenderClear(pRenderer);
 	desertBackground.Draw(pRenderer);
 	enemyScorpion.Draw(pRenderer);
+	//draw all bullets onto the screen
+	for (int i = 0; i < playerBulletContainer.size(); i++)
+	{
+		Scorpio::Sprite* playerBullet = &playerBulletContainer[i];
+		playerBullet->Draw(pRenderer);
+	}
 	playerSoldier.Draw(pRenderer);
 	//Show the hidden space we were drawing to called the backbuffer.
 	SDL_RenderPresent(pRenderer);
@@ -287,11 +328,11 @@ int main(int argc, char* args[])
 	{
 		const auto frame_start = static_cast<float>(SDL_GetTicks());
 
-		Input(); //take player input
+		Input(); 
 
-		Update(); //update game state
+		Update(); 
 
-		Draw(); // draw to screen to show new game state to player
+		Draw(); 
 
 		if (const float frame_time = static_cast<float>(SDL_GetTicks()) - frame_start;
 			frame_time < DELAY_TIME)
