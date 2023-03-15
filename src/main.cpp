@@ -147,7 +147,7 @@ bool isLeftPressed = false;
 bool isRightPressed = false;
 bool isShootPressed = false;
 float playerMoveSpeedPxPerSec = 120.0f; //Pixels per second, px/sec * sec = px
-float playerFireRepeatDelaySec = 0.5f; //seconds
+float playerFireRepeatDelaySec = 0.2f; //seconds
 float playerFireCooldownTimerSec = 0.0f; //seconds
 float bulletSpeed = 600.0f; //seconds
 
@@ -171,7 +171,17 @@ void Input() //take player input
 						isUpPressed = true;
 						break;
 					}
+					case(SDL_SCANCODE_UP):
+					{
+						isUpPressed = true;
+						break;
+					}
 					case(SDL_SCANCODE_S):
+					{
+						isDownPressed = true;
+						break;
+					}
+					case(SDL_SCANCODE_DOWN):
 					{
 						isDownPressed = true;
 						break;
@@ -181,7 +191,17 @@ void Input() //take player input
 						isLeftPressed = true;
 						break;
 					}
+					case(SDL_SCANCODE_LEFT):
+					{
+						isLeftPressed = true;
+						break;
+					}
 					case(SDL_SCANCODE_D):
+					{
+						isRightPressed = true;
+						break;
+					}
+					case(SDL_SCANCODE_RIGHT):
 					{
 						isRightPressed = true;
 						break;
@@ -204,7 +224,17 @@ void Input() //take player input
 						isUpPressed = false;
 						break;
 					}
+					case(SDL_SCANCODE_UP):
+					{
+						isUpPressed = false;
+						break;
+					}
 					case(SDL_SCANCODE_S):
+					{
+						isDownPressed = false;
+						break;
+					}
+					case(SDL_SCANCODE_DOWN):
 					{
 						isDownPressed = false;
 						break;
@@ -214,7 +244,17 @@ void Input() //take player input
 						isLeftPressed = false;
 						break;
 					}
+					case(SDL_SCANCODE_LEFT):
+					{
+						isLeftPressed = false;
+						break;
+					}
 					case(SDL_SCANCODE_D):
+					{
+						isRightPressed = false;
+						break;
+					}
+					case(SDL_SCANCODE_RIGHT):
 					{
 						isRightPressed = false;
 						break;
