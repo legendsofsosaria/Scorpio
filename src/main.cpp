@@ -278,8 +278,8 @@ void Update() // called every frame at FPS..FPS is declared at the top
 	// Define screen boundaries
 	const int SCREEN_LEFT = 0;
 	const int SCREEN_RIGHT = SCREEN_WIDTH - playerSoldier.dst.w;
-	const int SCREEN_TOP = 0;
-	const int SCREEN_BOTTOM = SCREEN_HEIGHT - playerSoldier.dst.h;
+	const int SCREEN_TOP = 155;
+	const int SCREEN_BOTTOM = 435;
 
 	if (isUpPressed && playerSoldier.dst.y > SCREEN_TOP)
 	{
