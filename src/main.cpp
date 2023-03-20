@@ -23,20 +23,32 @@ bool isGameRunning = true;
 
 namespace Scorpio
 {
+	struct Vec2 //2 dimension vector
+	{
+		float x;
+		float y;
+	};
 	//Declaring a struct declares a new type of object we can make
 	//After we can make sprites that contain all the contained data fields and functions
 	struct Sprite
 	{
-		//Can be accessed from outside the struct or class
-	public:
-		//This is a constructor. It is a special type of function. The compiler knows it's a constructor because
-		//it's the same name as the class, and has no return type.
+
+	private:
+		//Can't be accessed outside the struct or class
 		SDL_Texture* pTexture;
 		SDL_Rect src;
 		SDL_Rect dst;
+		int animationFrameCount = 1;
+		float animationCurrentFrame = 0;
+
+	public:
+		double rotationDegrees = 0.0;
+		SDL_RendererFlip flipState = SDL_FLIP_NONE;
+		Vec2 position; //where the sprite will draw on the screen
 
 		Sprite()
 		{
+			std::cout << "Sprite Default Constructor!" << std::endl;
 			pTexture = nullptr;
 			src = SDL_Rect{ 0,0,0,0 };
 			dst = SDL_Rect{ 0,0,0,0 };
@@ -44,26 +56,91 @@ namespace Scorpio
 
 		Sprite(SDL_Renderer* renderer, const char* filePathToLoad)
 		{
-			src = SDL_Rect{ 0,0,0,0 };
+			std::cout << "Sprite Constructor!" << std::endl;
 
 			pTexture = IMG_LoadTexture(renderer, filePathToLoad);
 			if (pTexture == NULL)
 			{
 				std::cout << "image failed to load: " << SDL_GetError << std::endl;
 			}
-			SDL_QueryTexture(pTexture, NULL, NULL, &src.w, &src.h); //get dimensions of the texture
-			dst = SDL_Rect{ 0,0,src.w,src.h };
+			else
+			{
+				std::cout << "Image load success: " << filePathToLoad << std::endl;
+			}
+			//Query for our images height and width to set a default source rect value spanning the whole texture
+			if (SDL_QueryTexture(pTexture, NULL, NULL, &src.w, &src.h) != 0)
+			{
+				std::cout << "Query Texture Failed!" << SDL_GetError << std::endl;
+			}
+
+			//At this point, SDLQueryTexture has used the addresses for src.w and src.h to place width and height into memory
+
+			src.x = 0;
+			src.y = 0;
+
+			dst.x = 0;
+			dst.y = 0;
+			dst.w = src.w;
+			dst.h = src.h;
+		}
+
+		//A constructor for animated sprites
+		Sprite(SDL_Renderer* renderer, const char* filePathToLoad, int frameWidth, int frameHeight, int numberOfFrames) : Sprite(renderer, filePathToLoad)
+		{
+			src.w = frameWidth;
+			src.h = frameHeight;
+			SetSize(frameWidth, frameHeight);
+			animationFrameCount = numberOfFrames;
 		}
 
 		void Draw(SDL_Renderer* renderer)
 		{
-			SDL_RenderCopy(pRenderer, pTexture, &src, &dst);
+			dst.x = position.x;
+			dst.y = position.y;
+			src.x = (int)animationCurrentFrame * src.w; //find current frame position in source image
+			int result = SDL_RenderCopyEx(renderer, pTexture, &src, &dst, rotationDegrees, NULL, flipState);
+			if (result != 0)
+			{
+				std::cout << "Render Failed! " << SDL_GetError() << std::endl;
+			}
 		}
 
-		void setPosition(int x, int y)
+		void SetAnimationFrameDimensions(int frameWidth, int frameHeight)
 		{
-			dst.x = x;
-			dst.y = y;
+			src.w = frameWidth;
+			src.h = frameHeight;
+		}
+
+		void NextFrame()
+		{
+			AddFrameTime(1.0f);
+		}
+
+		void AddFrameTime(float frames)
+		{
+			animationCurrentFrame += frames;
+			if (animationCurrentFrame >= animationFrameCount)
+			{
+				animationCurrentFrame = 0;
+			}
+		}
+
+		void SetPosition(int x, int y)
+		{
+			position.x = x;
+			position.y = y;
+		}
+
+		void SetSize(int x, int y)
+		{
+			dst.w = x;
+			dst.h = y;
+		}
+
+		Vec2 GetSize()
+		{
+			Vec2 sizeXY = { dst.w, dst.h };
+			return sizeXY;
 		}
 	};
 }
@@ -108,26 +185,23 @@ bool Init()
 void Load()
 {
 	desertBackground = Scorpio::Sprite(pRenderer, "../Assets/textures/background.bmp");
-	enemyScorpion = Scorpio::Sprite(pRenderer, "../Assets/textures/Scorpion_walk_sheet.gif");
+	int scorpionWidth = 130, scorpionHeight = 96, scorpionFrameCount = 4;
+	enemyScorpion = Scorpio::Sprite(pRenderer, "../Assets/textures/Scorpion_walk_sheet.gif", scorpionWidth, scorpionHeight, scorpionFrameCount);
 	enemyPoison = Scorpio::Sprite(pRenderer, "../Assets/textures/PoisonProjectile.png");
-	playerSoldier = Scorpio::Sprite(pRenderer, "../Assets/textures/charsprite.png");
-	cactus = Scorpio::Sprite(pRenderer, "../Assets/textures/cactus1_00.png");
+	//playerSoldier = Scorpio::Sprite(pRenderer, "../Assets/textures/charsprite.png", playerWidth, playerHeight);
 
-	desertBackground.dst.w = SCREEN_WIDTH;
-	desertBackground.dst.h = SCREEN_HEIGHT;
+	//Set size and location of background
+	desertBackground.SetSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+	desertBackground.position.x = 0;
+	desertBackground.position.y = 0;
 
-	//location to copy enemy from texture
-	enemyScorpion.src.w = 144;
-	enemyScorpion.src.h = 133;
-
-	//describe location to paste enemy onto the screen
-	enemyScorpion.dst.w = 180;
-	enemyScorpion.dst.h = 166;
-	enemyScorpion.dst.x = 1000;
-	enemyScorpion.dst.y = 365;
+	//Set size and location of enemy scorpion
+	enemyScorpion.SetSize(180, 166);
+	enemyScorpion.position.x = 1000;
+	enemyScorpion.position.y = 365;
 
 	//location to copy player from texture
-	playerSoldier.src.x = 15;
+	/*playerSoldier.src.x = 15;
 	playerSoldier.src.y = 12;
 	playerSoldier.src.w = 130;
 	playerSoldier.src.h = 100;
@@ -136,7 +210,7 @@ void Load()
 	playerSoldier.dst.x = 100;
 	playerSoldier.dst.y = 432;
 	playerSoldier.dst.w = playerSoldier.src.w;
-	playerSoldier.dst.h = playerSoldier.src.h;
+	playerSoldier.dst.h = playerSoldier.src.h;*/
 
 }
 
@@ -159,115 +233,113 @@ void Input() //take player input
 		//decide what to do with this event
 		switch (event.type)
 		{
-			//Moving up and down and left and right with WASD. Note, this is probably pretty weird for our game to have up and down.
-			//I'm leaving it in here just to show we *can* do it, but this is likely something we will want to remove later.
-			case(SDL_KEYDOWN):
+		case(SDL_KEYDOWN):
+		{
+			SDL_Scancode key = event.key.keysym.scancode;
+			switch (key)
 			{
-				SDL_Scancode key = event.key.keysym.scancode;
-				switch (key)
-				{
-					case(SDL_SCANCODE_W):
-					{
-						isUpPressed = true;
-						break;
-					}
-					case(SDL_SCANCODE_UP):
-					{
-						isUpPressed = true;
-						break;
-					}
-					case(SDL_SCANCODE_S):
-					{
-						isDownPressed = true;
-						break;
-					}
-					case(SDL_SCANCODE_DOWN):
-					{
-						isDownPressed = true;
-						break;
-					}
-					case(SDL_SCANCODE_A):
-					{
-						isLeftPressed = true;
-						break;
-					}
-					case(SDL_SCANCODE_LEFT):
-					{
-						isLeftPressed = true;
-						break;
-					}
-					case(SDL_SCANCODE_D):
-					{
-						isRightPressed = true;
-						break;
-					}
-					case(SDL_SCANCODE_RIGHT):
-					{
-						isRightPressed = true;
-						break;
-					}
-					case(SDL_SCANCODE_SPACE):
-					{
-						isShootPressed = true;
-						break;
-					}
-				}
+			case(SDL_SCANCODE_W):
+			{
+				isUpPressed = true;
 				break;
 			}
-			case (SDL_KEYUP):
+			case(SDL_SCANCODE_UP):
 			{
-				SDL_Scancode key = event.key.keysym.scancode;
-				switch (key)
-				{
-					case(SDL_SCANCODE_W):
-					{
-						isUpPressed = false;
-						break;
-					}
-					case(SDL_SCANCODE_UP):
-					{
-						isUpPressed = false;
-						break;
-					}
-					case(SDL_SCANCODE_S):
-					{
-						isDownPressed = false;
-						break;
-					}
-					case(SDL_SCANCODE_DOWN):
-					{
-						isDownPressed = false;
-						break;
-					}
-					case(SDL_SCANCODE_A):
-					{
-						isLeftPressed = false;
-						break;
-					}
-					case(SDL_SCANCODE_LEFT):
-					{
-						isLeftPressed = false;
-						break;
-					}
-					case(SDL_SCANCODE_D):
-					{
-						isRightPressed = false;
-						break;
-					}
-					case(SDL_SCANCODE_RIGHT):
-					{
-						isRightPressed = false;
-						break;
-					}
-					case(SDL_SCANCODE_SPACE):
-					{
-						isShootPressed = false;
-						break;
-					}
-				}
+				isUpPressed = true;
 				break;
+			}
+			case(SDL_SCANCODE_S):
+			{
+				isDownPressed = true;
+				break;
+			}
+			case(SDL_SCANCODE_DOWN):
+			{
+				isDownPressed = true;
+				break;
+			}
+			case(SDL_SCANCODE_A):
+			{
+				isLeftPressed = true;
+				break;
+			}
+			case(SDL_SCANCODE_LEFT):
+			{
+				isLeftPressed = true;
+				break;
+			}
+			case(SDL_SCANCODE_D):
+			{
+				isRightPressed = true;
+				break;
+			}
+			case(SDL_SCANCODE_RIGHT):
+			{
+				isRightPressed = true;
+				break;
+			}
+			case(SDL_SCANCODE_SPACE):
+			{
+				isShootPressed = true;
+				break;
+			}
 			}
 			break;
+		}
+		case (SDL_KEYUP):
+		{
+			SDL_Scancode key = event.key.keysym.scancode;
+			switch (key)
+			{
+			case(SDL_SCANCODE_W):
+			{
+				isUpPressed = false;
+				break;
+			}
+			case(SDL_SCANCODE_UP):
+			{
+				isUpPressed = false;
+				break;
+			}
+			case(SDL_SCANCODE_S):
+			{
+				isDownPressed = false;
+				break;
+			}
+			case(SDL_SCANCODE_DOWN):
+			{
+				isDownPressed = false;
+				break;
+			}
+			case(SDL_SCANCODE_A):
+			{
+				isLeftPressed = false;
+				break;
+			}
+			case(SDL_SCANCODE_LEFT):
+			{
+				isLeftPressed = false;
+				break;
+			}
+			case(SDL_SCANCODE_D):
+			{
+				isRightPressed = false;
+				break;
+			}
+			case(SDL_SCANCODE_RIGHT):
+			{
+				isRightPressed = false;
+				break;
+			}
+			case(SDL_SCANCODE_SPACE):
+			{
+				isShootPressed = false;
+				break;
+			}
+			}
+			break;
+		}
+		break;
 		}
 	}
 }
@@ -277,56 +349,58 @@ void Update() // called every frame at FPS..FPS is declared at the top
 {
 	// Define screen boundaries
 	const int SCREEN_LEFT = 0;
-	const int SCREEN_RIGHT = SCREEN_WIDTH - playerSoldier.dst.w;
+	const int SCREEN_RIGHT = SCREEN_WIDTH - playerSoldier.position.x;
 	const int SCREEN_TOP = 155;
 	const int SCREEN_BOTTOM = 435;
 
-	if (isUpPressed && playerSoldier.dst.y > SCREEN_TOP)
+	if (isUpPressed && playerSoldier.position.y > SCREEN_TOP)
 	{
-		playerSoldier.dst.y -= playerMoveSpeedPxPerSec * deltaTime;
+		playerSoldier.position.y -= playerMoveSpeedPxPerSec * deltaTime;
 	}
-	if (isDownPressed && playerSoldier.dst.y < SCREEN_BOTTOM)
+	if (isDownPressed && playerSoldier.position.y < SCREEN_BOTTOM)
 	{
-		playerSoldier.dst.y += playerMoveSpeedPxPerSec * deltaTime;
+		playerSoldier.position.y += playerMoveSpeedPxPerSec * deltaTime;
 	}
-	if (isLeftPressed && playerSoldier.dst.x > SCREEN_LEFT)
+	if (isLeftPressed && playerSoldier.position.x > SCREEN_LEFT)
 	{
-		playerSoldier.dst.x -= playerMoveSpeedPxPerSec * deltaTime;
+		playerSoldier.position.x -= playerMoveSpeedPxPerSec * deltaTime;
 	}
-	if (isRightPressed && playerSoldier.dst.x < SCREEN_RIGHT)
+	if (isRightPressed && playerSoldier.position.x < SCREEN_RIGHT)
 	{
-		playerSoldier.dst.x += playerMoveSpeedPxPerSec * deltaTime;
+		playerSoldier.position.x += playerMoveSpeedPxPerSec * deltaTime;
 	}
 	if (isShootPressed && playerFireCooldownTimerSec < 0.0f)
 	{
 		//Create a new bullet
 		Scorpio::Sprite playerBullet = Scorpio::Sprite(pRenderer, "../Assets/textures/playerprojectile.png");
-		
+
 		//set bullet size to be displayed
-		playerBullet.dst.w = playerSoldier.src.w / 4;
-		playerBullet.dst.h = playerSoldier.src.h / 4;
+		//playerBullet.dst.w = playerSoldier.src.w / 4;
+		//playerBullet.position.y = playerSoldier / 4;
 
 		//start bullet at player sprite position
-		playerBullet.dst.x = playerSoldier.dst.x + playerSoldier.dst.w;
-		playerBullet.dst.y = playerSoldier.dst.y + playerSoldier.dst.h * 0.7;
-		
+		playerBullet.position.x = playerSoldier.position.x + playerSoldier.position.y;
+		playerBullet.position.y = playerSoldier.position.y + playerSoldier.position.y * 0.7;
+
 		//add bullet to container (to the end of the array)
 		playerBulletContainer.push_back(playerBullet);
-		
+
 		//reset cooldown
 		playerFireCooldownTimerSec = playerFireRepeatDelaySec;
-		
+
 	}
 	//tick down the time for our firing cooldown
 	playerFireCooldownTimerSec -= deltaTime;
 
 	//move all bullets on the screen
-	for (int i = 0; i <  playerBulletContainer.size(); i++)
+	for (int i = 0; i < playerBulletContainer.size(); i++)
 	{
 		//get a reference to the bullet in the container
 		Scorpio::Sprite* playerBullet = &playerBulletContainer[i];
-		playerBullet->dst.x += bulletSpeed * deltaTime;
+		playerBullet->position.x += bulletSpeed * deltaTime;
 	}
+
+	enemyScorpion.AddFrameTime(0.1);
 }
 
 void Draw() // draw to screen to show new game state to player
@@ -336,12 +410,12 @@ void Draw() // draw to screen to show new game state to player
 	desertBackground.Draw(pRenderer);
 	enemyScorpion.Draw(pRenderer);
 	//draw all bullets onto the screen
-	for (int i = 0; i < playerBulletContainer.size(); i++)
+	/*for (int i = 0; i < playerBulletContainer.size(); i++)
 	{
 		Scorpio::Sprite* playerBullet = &playerBulletContainer[i];
 		playerBullet->Draw(pRenderer);
-	}
-	playerSoldier.Draw(pRenderer);
+	}*/
+	//playerSoldier.Draw(pRenderer);
 	//Show the hidden space we were drawing to called the backbuffer.
 	SDL_RenderPresent(pRenderer);
 }
@@ -368,11 +442,11 @@ int main(int argc, char* args[])
 	{
 		const auto frame_start = static_cast<float>(SDL_GetTicks());
 
-		Input(); 
+		Input();
 
-		Update(); 
+		Update();
 
-		Draw(); 
+		Draw();
 
 		if (const float frame_time = static_cast<float>(SDL_GetTicks()) - frame_start;
 			frame_time < DELAY_TIME)
