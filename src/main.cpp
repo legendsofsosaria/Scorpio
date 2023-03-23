@@ -15,6 +15,7 @@ constexpr float FPS = 60.0f;
 constexpr float DELAY_TIME = 1000.0f / FPS; // target deltaTime in ms
 const int SCREEN_WIDTH = 1200;
 const int SCREEN_HEIGHT = 600;
+
 float deltaTime = 1.0f / FPS; //time passed between frames in secs
 
 SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memory location which we can use later.
@@ -188,7 +189,8 @@ void Load()
 	int scorpionWidth = 130, scorpionHeight = 96, scorpionFrameCount = 4;
 	enemyScorpion = Scorpio::Sprite(pRenderer, "../Assets/textures/Scorpion_walk_sheet.gif", scorpionWidth, scorpionHeight, scorpionFrameCount);
 	enemyPoison = Scorpio::Sprite(pRenderer, "../Assets/textures/PoisonProjectile.png");
-	//playerSoldier = Scorpio::Sprite(pRenderer, "../Assets/textures/charsprite.png", playerWidth, playerHeight);
+	int playerWidth = 131, playerHeight = 100, playerFrameCount = 4;
+	playerSoldier = Scorpio::Sprite(pRenderer, "../Assets/textures/playerWalk.png", playerWidth, playerHeight, playerFrameCount);
 
 	//Set size and location of background
 	desertBackground.SetSize(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -200,17 +202,11 @@ void Load()
 	enemyScorpion.position.x = 1000;
 	enemyScorpion.position.y = 365;
 
-	//location to copy player from texture
-	/*playerSoldier.src.x = 15;
-	playerSoldier.src.y = 12;
-	playerSoldier.src.w = 130;
-	playerSoldier.src.h = 100;
+	//Set size and location of player soldier
+	playerSoldier.SetSize(125, 100);
+	playerSoldier.position.x = 100;
+	playerSoldier.position.y = 430;
 
-	//describe location to paste player onto the screen
-	playerSoldier.dst.x = 100;
-	playerSoldier.dst.y = 432;
-	playerSoldier.dst.w = playerSoldier.src.w;
-	playerSoldier.dst.h = playerSoldier.src.h;*/
 
 }
 
@@ -399,7 +395,7 @@ void Update() // called every frame at FPS..FPS is declared at the top
 		Scorpio::Sprite* playerBullet = &playerBulletContainer[i];
 		playerBullet->position.x += bulletSpeed * deltaTime;
 	}
-
+	playerSoldier.AddFrameTime(0.1);
 	enemyScorpion.AddFrameTime(0.1);
 }
 
@@ -407,16 +403,18 @@ void Draw() // draw to screen to show new game state to player
 {
 	SDL_SetRenderDrawColor(pRenderer, 5, 5, 15, 255);
 	SDL_RenderClear(pRenderer);
+	
 	desertBackground.Draw(pRenderer);
 	enemyScorpion.Draw(pRenderer);
+	playerSoldier.Draw(pRenderer);
 	//draw all bullets onto the screen
 	/*for (int i = 0; i < playerBulletContainer.size(); i++)
 	{
 		Scorpio::Sprite* playerBullet = &playerBulletContainer[i];
 		playerBullet->Draw(pRenderer);
 	}*/
-	//playerSoldier.Draw(pRenderer);
-	//Show the hidden space we were drawing to called the backbuffer.
+
+	//Show the hidden space we were drawing-to called the backbuffer.
 	SDL_RenderPresent(pRenderer);
 }
 
