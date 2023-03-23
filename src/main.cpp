@@ -352,18 +352,22 @@ void Update() // called every frame at FPS..FPS is declared at the top
 	if (isUpPressed && playerSoldier.position.y > SCREEN_TOP)
 	{
 		playerSoldier.position.y -= playerMoveSpeedPxPerSec * deltaTime;
+		playerSoldier.AddFrameTime(0.1);
 	}
 	if (isDownPressed && playerSoldier.position.y < SCREEN_BOTTOM)
 	{
 		playerSoldier.position.y += playerMoveSpeedPxPerSec * deltaTime;
+		playerSoldier.AddFrameTime(0.1);
 	}
 	if (isLeftPressed && playerSoldier.position.x > SCREEN_LEFT)
 	{
 		playerSoldier.position.x -= playerMoveSpeedPxPerSec * deltaTime;
+		playerSoldier.AddFrameTime(0.1);
 	}
 	if (isRightPressed && playerSoldier.position.x < SCREEN_RIGHT)
 	{
 		playerSoldier.position.x += playerMoveSpeedPxPerSec * deltaTime;
+		playerSoldier.AddFrameTime(0.1);
 	}
 	if (isShootPressed && playerFireCooldownTimerSec < 0.0f)
 	{
@@ -395,7 +399,6 @@ void Update() // called every frame at FPS..FPS is declared at the top
 		Scorpio::Sprite* playerBullet = &playerBulletContainer[i];
 		playerBullet->position.x += bulletSpeed * deltaTime;
 	}
-	playerSoldier.AddFrameTime(0.1);
 	enemyScorpion.AddFrameTime(0.1);
 }
 
