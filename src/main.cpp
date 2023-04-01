@@ -188,6 +188,7 @@ namespace Scorpio
 			{
 				bulletSprite = Scorpio::Sprite(pRenderer, "../Assets/textures/playerprojectile.png");
 				bulletSprite.SetSize(125 / 4, 100 / 4);
+				bulletSprite.position.x = sprite.position.x;
 				bulletSprite.position.x += sprite.GetSize().x;
 				bulletSprite.position.y = sprite.position.y + (sprite.GetSize().y * 0.7);
 			}
@@ -433,7 +434,7 @@ void SpawnEnemy()
 
 	Scorpio::Character enemy1;
 	enemy1.sprite = enemyScorpion1;
-	enemy1.fireRepeatDelay = 2.0;
+	enemy1.fireRepeatDelay = 3.5;
 	enemy1.moveSpeedPx = 80;
 	
 	//add to list of enemies
@@ -493,7 +494,7 @@ void UpdatePlayer()
 	if (isShootPressed && playerSoldier.CanShoot())
 	{
 		bool toRight = true;
-		Scorpio::Vec2 velocity = { 1000,0 };
+		Scorpio::Vec2 velocity = { 400,0 };
 		//passing bulletContainer by reference to add bullets to this container specifically
 		playerSoldier.Shoot(toRight, playerBulletContainer, velocity);
 	}
