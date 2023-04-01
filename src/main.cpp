@@ -22,7 +22,7 @@ SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memo
 SDL_Renderer* pRenderer = nullptr;
 bool isGameRunning = true;
 
-float enemySpawnDelay = 5.0f;
+float enemySpawnDelay = 1.0f;
 float enemySpawnTimer = 0.0f;
 
 namespace Scorpio
@@ -141,10 +141,18 @@ namespace Scorpio
 			dst.h = h;
 		}
 
-		Vec2 GetSize()
+		SDL_Rect GetRect() const
 		{
-			Vec2 sizeWH = { dst.w, dst.h };
-			return sizeWH;
+			SDL_Rect returnValue = dst;
+			returnValue.x = position.x;
+			returnValue.y = position.y;
+			return dst;
+		}
+
+		Vec2 GetSize() const
+		{
+			Vec2 returnVec = { dst.w, dst.h };
+			return returnVec;
 		}
 	}; //struct Sprite
 
@@ -224,7 +232,54 @@ namespace Scorpio
 			return (fireRepeatTimer <= 0.0f);
 		}
 
-	};
+	}; //character class
+
+	//part of AABB collision detection. Returns true if the bounds defined overlap
+	bool AreBoundsOverlapping(int minA, int maxA, int minB, int maxB)
+	{
+		bool isOverlapping = false;
+		if (maxA >= minB && maxA <= maxB) // check if max of A is contained inside B
+		{
+			isOverlapping = true;
+		}
+		if (minA <= maxB && minA >= maxB) // check if min of A is contained inside B
+		{
+			isOverlapping = true;
+		}
+
+		return isOverlapping;
+	}
+
+	//check collision between two sprites
+	bool  AreSpritesOverlapping(const Sprite& A, const Sprite& B)
+	{
+		//get bounds of each sprite x and y
+		int minAx, maxAx, minBx, maxBx;
+		int minAy, maxAy, minBy, maxBy;
+
+		SDL_Rect boundsA = A.GetRect();
+		SDL_Rect boundsB = B.GetRect();
+
+		SDL_bool isColliding = SDL_HasIntersection(&boundsA, &boundsB);
+		return (bool)isColliding;
+
+		//minAx = boundsA.x;
+		//minAy = boundsA.y;
+		//minBx = boundsB.x;
+		//minBy = boundsB.y;
+		//
+		//maxAx = boundsA.x + boundsA.w;
+		//maxAy = boundsA.y + boundsA.h;
+		//maxBx = boundsB.x + boundsB.w;
+		//maxBy = boundsB.y + boundsB.h;
+		//
+		//bool overlapOnX = AreBoundsOverlapping(minAx, maxAx, minBx, maxBx);
+		//bool overlapOnY = AreBoundsOverlapping(minAy, maxAy, minBy, maxBy);
+		//
+		////check if bounds overlap. only when both axis have overlap is there a collision
+		//return overlapOnX && overlapOnY;
+
+	}
 }
 
 //Creating sprite objects
@@ -423,22 +478,22 @@ const int SCREEN_BOTTOM = 435;
 
 void SpawnEnemy()
 {
-	Scorpio::Sprite enemyScorpion1;
+	Scorpio::Sprite enemyScorpion;
 	int scorpionWidth = 130, scorpionHeight = 96, scorpionFrameCount = 4;
-	enemyScorpion1 = Scorpio::Sprite(pRenderer, "../Assets/textures/Scorpion_walk_sheet.gif", scorpionWidth, scorpionHeight, scorpionFrameCount);
+	enemyScorpion = Scorpio::Sprite(pRenderer, "../Assets/textures/Scorpion_walk_sheet.gif", scorpionWidth, scorpionHeight, scorpionFrameCount);
 	//Set size and location of enemy scorpion1
-	enemyScorpion1.SetSize(125, 100);
+	enemyScorpion.SetSize(125, 100);
 	//spawning at random position along y, right side of x
-	int maxY = SCREEN_HEIGHT - SCREEN_TOP - (int)enemyScorpion1.GetSize().y;
-	enemyScorpion1.position = { SCREEN_WIDTH,(float)(rand() % maxY + SCREEN_TOP) };
+	int maxY = SCREEN_HEIGHT - SCREEN_TOP - (int)enemyScorpion.GetSize().y;
+	enemyScorpion.position = { SCREEN_WIDTH,(float)(rand() % maxY + SCREEN_TOP) };
 
-	Scorpio::Character enemy1;
-	enemy1.sprite = enemyScorpion1;
-	enemy1.fireRepeatDelay = 3.5;
-	enemy1.moveSpeedPx = 80;
+	Scorpio::Character enemy;
+	enemy.sprite = enemyScorpion;
+	enemy.fireRepeatDelay = 3.5;
+	enemy.moveSpeedPx = 80;
 	
 	//add to list of enemies
-	enemyContainer.push_back(enemy1);
+	enemyContainer.push_back(enemy);
 	
 	//rest timer
 	enemySpawnTimer = enemySpawnDelay;
@@ -545,6 +600,49 @@ void Update() // called every frame at FPS..FPS is declared at the top
 		enemySpawnTimer -= deltaTime;
 	}
 	
+	//collision detection
+	//enemy bullets and player
+	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = enemyBulletContainer.begin(); bulletIterator != enemyBulletContainer.end();)
+	{
+		Scorpio::Sprite& enemyBullet = bulletIterator->sprite;
+		if (Scorpio::AreSpritesOverlapping(playerSoldier.sprite, enemyBullet))
+		{
+			std::cout << "Player was hit" << std::endl;
+			playerSoldier.sprite.rotationDegrees += 90.0; //the place to decrement HP
+
+			//remove this element from container.
+			bulletIterator = enemyBulletContainer.erase(bulletIterator); //erase function returns new index
+		}
+		if (bulletIterator != enemyBulletContainer.end())  bulletIterator++;
+		
+	}
+
+	//for every player bullet
+	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = playerBulletContainer.begin(); bulletIterator != playerBulletContainer.end();)
+	{
+		//for every enemy sprite
+		for (auto enemyIterator = enemyContainer.begin(); enemyIterator != enemyContainer.end();)
+		{
+			//test for collision between player bullet and enemy
+			if (Scorpio::AreSpritesOverlapping(bulletIterator->sprite, enemyIterator->sprite))
+			{
+				//destroy bullet
+				bulletIterator = playerBulletContainer.erase(bulletIterator);
+
+				//destroy enemy
+				enemyIterator = enemyContainer.erase(enemyIterator);
+
+				//if last object is destroyed, then stop comparing
+				if (bulletIterator == playerBulletContainer.end())
+					break;
+
+			}
+
+			if (enemyIterator != enemyContainer.end())  enemyIterator++;
+		}
+		if (bulletIterator != playerBulletContainer.end())  bulletIterator++; //continue as long as not the end
+
+	}
 }
 
 void Draw() // draw to screen to show new game state to player
