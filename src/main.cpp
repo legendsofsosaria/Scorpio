@@ -22,12 +22,15 @@ SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memo
 SDL_Renderer* pRenderer = nullptr;
 bool isGameRunning = true;
 
+float enemySpawnDelay = 5.0f;
+float enemySpawnTimer = 0.0f;
+
 namespace Scorpio
 {
 	struct Vec2 //2 dimension vector
 	{
-		float x;
-		float y;
+		float x = 0;
+		float y = 0;
 	};
 	//Declaring a struct declares a new type of object we can make
 	//After we can make sprites that contain all the contained data fields and functions
@@ -114,7 +117,7 @@ namespace Scorpio
 
 		void NextFrame()
 		{
-			AddFrameTime(1.0f);
+			AddFrameTime(0.1f);
 		}
 
 		void AddFrameTime(float frames)
@@ -132,27 +135,105 @@ namespace Scorpio
 			position.y = y;
 		}
 
-		void SetSize(int x, int y)
+		void SetSize(int w, int h)
 		{
-			dst.w = x;
-			dst.h = y;
+			dst.w = w;
+			dst.h = h;
 		}
 
 		Vec2 GetSize()
 		{
-			Vec2 sizeXY = { dst.w, dst.h };
-			return sizeXY;
+			Vec2 sizeWH = { dst.w, dst.h };
+			return sizeWH;
 		}
+	}; //struct Sprite
+
+	class Bullet
+	{
+	public:
+		Sprite sprite;
+		Vec2 velocity;
+
+		//move bullet
+		void Update()
+		{
+			sprite.position.x += velocity.x * deltaTime;
+			sprite.position.y += velocity.y * deltaTime;
+		}
+	};
+
+	class Character
+	{
+	public:
+		Sprite sprite;
+		float moveSpeedPx = 120.0f;
+		float fireRepeatDelay = 0.5f;
+
+	private:
+		float fireRepeatTimer = 0.0f;
+
+	public:
+		void Move(Vec2 input)
+		{
+			sprite.position.x += input.x * (moveSpeedPx * deltaTime);
+			sprite.position.y += input.y * (moveSpeedPx * deltaTime);
+		}
+		
+		//only handles left and right shooting
+		void Shoot(bool towardRight, std::vector<Bullet>& container, Scorpio::Vec2 velocity)
+		{
+			//Create a new bullet
+			Scorpio::Sprite bulletSprite = Scorpio::Sprite(pRenderer, "../Assets/textures/playerprojectile.png");
+			
+			bulletSprite.SetSize(125 / 4, 100 / 4);
+			
+			//start bullet at player sprite position
+			bulletSprite.position.x = sprite.position.x;
+			if (towardRight)
+			{
+				bulletSprite.position.x += sprite.GetSize().x;
+			} 
+			
+			bulletSprite.position.y = sprite.position.y + (sprite.GetSize().y * 0.7);
+			
+			//set up our bullet class instance
+			Bullet playerBullet;
+			playerBullet.sprite = bulletSprite;
+			playerBullet.velocity = velocity;
+			
+			//add bullet to container (to the end of the array)
+			container.push_back(playerBullet);
+
+			//reset cooldown
+			fireRepeatTimer = fireRepeatDelay;
+		}
+		
+		void Update()
+		{
+			//tick down the time for our firing cooldown
+			fireRepeatTimer -= deltaTime;
+		}
+
+		bool CanShoot()
+		{
+			return (fireRepeatTimer <= 0.0f);
+		}
+
 	};
 }
 
 //Creating sprite objects
-Scorpio::Sprite playerSoldier;
-Scorpio::Sprite enemyScorpion;
+
+
 Scorpio::Sprite enemyPoison;
 Scorpio::Sprite desertBackground;
 Scorpio::Sprite cactus;
-std::vector<Scorpio::Sprite> playerBulletContainer; //std::vector is a class that allows changing size. This is a dynamic array of Scorpio::Sprite
+
+Scorpio::Character playerSoldier;
+std::vector<Scorpio::Bullet> playerBulletContainer; //std::vector is a class that allows changing size. This is a dynamic array of Scorpio::Sprite
+
+std::vector<Scorpio::Character> enemyContainer; //container of all enemy ships
+std::vector<Scorpio::Bullet> enemyBulletContainer; //container of all enemy bullets(poison)
 
 //Initialize opens a window and sets up renderer
 bool Init()
@@ -186,27 +267,20 @@ bool Init()
 void Load()
 {
 	desertBackground = Scorpio::Sprite(pRenderer, "../Assets/textures/background.bmp");
-	int scorpionWidth = 130, scorpionHeight = 96, scorpionFrameCount = 4;
-	enemyScorpion = Scorpio::Sprite(pRenderer, "../Assets/textures/Scorpion_walk_sheet.gif", scorpionWidth, scorpionHeight, scorpionFrameCount);
 	enemyPoison = Scorpio::Sprite(pRenderer, "../Assets/textures/PoisonProjectile.png");
 	int playerWidth = 131, playerHeight = 100, playerFrameCount = 4;
-	playerSoldier = Scorpio::Sprite(pRenderer, "../Assets/textures/playerWalk.png", playerWidth, playerHeight, playerFrameCount);
+	playerSoldier.sprite = Scorpio::Sprite(pRenderer, "../Assets/textures/playerWalk.png", playerWidth, playerHeight, playerFrameCount);
+	
 
 	//Set size and location of background
 	desertBackground.SetSize(SCREEN_WIDTH, SCREEN_HEIGHT);
 	desertBackground.position.x = 0;
 	desertBackground.position.y = 0;
 
-	//Set size and location of enemy scorpion
-	enemyScorpion.SetSize(180, 166);
-	enemyScorpion.position.x = 1000;
-	enemyScorpion.position.y = 365;
-
 	//Set size and location of player soldier
-	playerSoldier.SetSize(125, 100);
-	playerSoldier.position.x = 100;
-	playerSoldier.position.y = 430;
-
+	playerSoldier.sprite.SetSize(125, 100);
+	playerSoldier.sprite.position.x = 100;
+	playerSoldier.sprite.position.y = 430;
 
 }
 
@@ -216,10 +290,6 @@ bool isDownPressed = false;
 bool isLeftPressed = false;
 bool isRightPressed = false;
 bool isShootPressed = false;
-float playerMoveSpeedPxPerSec = 120.0f; //Pixels per second, px/sec * sec = px
-float playerFireRepeatDelaySec = 0.2f; //seconds
-float playerFireCooldownTimerSec = 0.0f; //seconds
-float bulletSpeed = 600.0f; //seconds
 
 void Input() //take player input
 {
@@ -340,66 +410,136 @@ void Input() //take player input
 	}
 }
 
-//update your game state, draw the current frame
+// Define screen boundaries
+const int SCREEN_LEFT = 0;
+const int SCREEN_RIGHT = SCREEN_WIDTH - playerSoldier.sprite.position.x;
+const int SCREEN_TOP = 155;
+const int SCREEN_BOTTOM = 435;
+
+void SpawnEnemy()
+{
+	Scorpio::Sprite enemyScorpion1;
+	int scorpionWidth = 130, scorpionHeight = 96, scorpionFrameCount = 4;
+	enemyScorpion1 = Scorpio::Sprite(pRenderer, "../Assets/textures/Scorpion_walk_sheet.gif", scorpionWidth, scorpionHeight, scorpionFrameCount);
+	//Set size and location of enemy scorpion1
+	enemyScorpion1.SetSize(125, 100);
+	//spawning at random position along y, right side of x
+	int maxY = SCREEN_HEIGHT - SCREEN_TOP - (int)enemyScorpion1.GetSize().y;
+	enemyScorpion1.position = { SCREEN_WIDTH,(float)(rand() % maxY + SCREEN_TOP) };
+
+	Scorpio::Character enemy1;
+	enemy1.sprite = enemyScorpion1;
+	enemy1.fireRepeatDelay = 2.0;
+	enemy1.moveSpeedPx = 80;
+	
+	//add to list of enemies
+	enemyContainer.push_back(enemy1);
+	
+	//rest timer
+	enemySpawnTimer = enemySpawnDelay;
+}
+
+void UpdatePlayer()
+{
+	Scorpio::Vec2 inputVector;
+
+	if (isUpPressed)
+	{
+		inputVector.y = -1;
+		playerSoldier.sprite.NextFrame();
+		if (playerSoldier.sprite.position.y < SCREEN_TOP)
+		{
+			playerSoldier.sprite.position.y = SCREEN_TOP;
+			
+
+		}
+	}
+	
+	if (isDownPressed)
+	{
+		inputVector.y = 1;
+		playerSoldier.sprite.NextFrame();
+		if (playerSoldier.sprite.position.y > SCREEN_BOTTOM)
+		{
+			playerSoldier.sprite.position.y = SCREEN_BOTTOM;
+		}
+	}
+	
+	if (isLeftPressed)
+	{
+		inputVector.x = -1;
+		playerSoldier.sprite.NextFrame();
+		if (playerSoldier.sprite.position.x < SCREEN_LEFT)
+		{
+			playerSoldier.sprite.position.x = SCREEN_LEFT;
+		}
+	}
+	
+	if (isRightPressed)
+	{
+		inputVector.x = 1;
+		playerSoldier.sprite.NextFrame();
+		if (playerSoldier.sprite.position.x > SCREEN_RIGHT)
+		{
+			playerSoldier.sprite.position.x = SCREEN_RIGHT;
+		}
+	}
+	
+	//if shooting and our shooting is off cooldown
+	if (isShootPressed && playerSoldier.CanShoot())
+	{
+		bool toRight = true;
+		Scorpio::Vec2 velocity = { 1000,0 };
+		//passing bulletContainer by reference to add bullets to this container specifically
+		playerSoldier.Shoot(toRight, playerBulletContainer, velocity);
+	}
+
+	playerSoldier.Move(inputVector);
+	playerSoldier.Update();
+}
 void Update() // called every frame at FPS..FPS is declared at the top
 {
-	// Define screen boundaries
-	const int SCREEN_LEFT = 0;
-	const int SCREEN_RIGHT = SCREEN_WIDTH - playerSoldier.position.x;
-	const int SCREEN_TOP = 155;
-	const int SCREEN_BOTTOM = 435;
-
-	if (isUpPressed && playerSoldier.position.y > SCREEN_TOP)
-	{
-		playerSoldier.position.y -= playerMoveSpeedPxPerSec * deltaTime;
-		playerSoldier.AddFrameTime(0.1);
-	}
-	if (isDownPressed && playerSoldier.position.y < SCREEN_BOTTOM)
-	{
-		playerSoldier.position.y += playerMoveSpeedPxPerSec * deltaTime;
-		playerSoldier.AddFrameTime(0.1);
-	}
-	if (isLeftPressed && playerSoldier.position.x > SCREEN_LEFT)
-	{
-		playerSoldier.position.x -= playerMoveSpeedPxPerSec * deltaTime;
-		playerSoldier.AddFrameTime(0.1);
-	}
-	if (isRightPressed && playerSoldier.position.x < SCREEN_RIGHT)
-	{
-		playerSoldier.position.x += playerMoveSpeedPxPerSec * deltaTime;
-		playerSoldier.AddFrameTime(0.1);
-	}
-	if (isShootPressed && playerFireCooldownTimerSec < 0.0f)
-	{
-		//Create a new bullet
-		Scorpio::Sprite playerBullet = Scorpio::Sprite(pRenderer, "../Assets/textures/playerprojectile.png");
-
-		//set bullet size to be displayed
-		//playerBullet.dst.w = playerSoldier.src.w / 4;
-		//playerBullet.position.y = playerSoldier / 4;
-
-		//start bullet at player sprite position
-		playerBullet.position.x = playerSoldier.position.x + playerSoldier.position.y;
-		playerBullet.position.y = playerSoldier.position.y + playerSoldier.position.y * 0.7;
-
-		//add bullet to container (to the end of the array)
-		playerBulletContainer.push_back(playerBullet);
-
-		//reset cooldown
-		playerFireCooldownTimerSec = playerFireRepeatDelaySec;
-
-	}
-	//tick down the time for our firing cooldown
-	playerFireCooldownTimerSec -= deltaTime;
-
-	//move all bullets on the screen
+	UpdatePlayer();
+	
+	//update player bullets 
 	for (int i = 0; i < playerBulletContainer.size(); i++)
 	{
-		//get a reference to the bullet in the container
-		Scorpio::Sprite* playerBullet = &playerBulletContainer[i];
-		playerBullet->position.x += bulletSpeed * deltaTime;
+		playerBulletContainer[i].Update();
 	}
-	enemyScorpion.AddFrameTime(0.1);
+
+	//update enemy bullets
+	for (int i = 0; i < enemyBulletContainer.size(); i++)
+	{
+		enemyBulletContainer[i].Update();
+	}
+
+	//update enemy scorpions
+	for (int i = 0; i < enemyContainer.size(); i++)
+	{
+		//get reference to enemy at index[i]
+		Scorpio::Character& enemy = enemyContainer[i];
+
+		enemy.Move({ -1,0 });
+		enemy.sprite.NextFrame();
+		enemy.Update();
+		if (enemy.CanShoot())
+		{
+			bool toRight = false;
+			Scorpio::Vec2 velocity = { -200, 0 };
+			enemy.Shoot(toRight, enemyBulletContainer,velocity);
+		}
+	}
+	
+	//spawn enemies on timer and update timer
+	if (enemySpawnTimer <= 0)
+	{
+		SpawnEnemy();
+	}
+	else
+	{
+		enemySpawnTimer -= deltaTime;
+	}
+	
 }
 
 void Draw() // draw to screen to show new game state to player
@@ -408,14 +548,26 @@ void Draw() // draw to screen to show new game state to player
 	SDL_RenderClear(pRenderer);
 	
 	desertBackground.Draw(pRenderer);
-	enemyScorpion.Draw(pRenderer);
-	playerSoldier.Draw(pRenderer);
+	
+	playerSoldier.sprite.Draw(pRenderer);
+	
 	//draw all bullets onto the screen
-	/*for (int i = 0; i < playerBulletContainer.size(); i++)
+	for (int i = 0; i < playerBulletContainer.size(); i++)
 	{
-		Scorpio::Sprite* playerBullet = &playerBulletContainer[i];
-		playerBullet->Draw(pRenderer);
-	}*/
+		playerBulletContainer[i].sprite.Draw(pRenderer);
+	}
+
+	//draw all enemy bullets onto the screen
+	for (int i = 0; i < enemyBulletContainer.size(); i++)
+	{
+		enemyBulletContainer[i].sprite.Draw(pRenderer);
+	}
+
+	//draw all enemy scorpions onto the screen
+	for (int i = 0; i < enemyContainer.size(); i++)
+	{
+		enemyContainer[i].sprite.Draw(pRenderer);
+	}
 
 	//Show the hidden space we were drawing-to called the backbuffer.
 	SDL_RenderPresent(pRenderer);
