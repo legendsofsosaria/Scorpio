@@ -15,12 +15,14 @@ constexpr float FPS = 60.0f;
 constexpr float DELAY_TIME = 1000.0f / FPS; // target deltaTime in ms
 const int SCREEN_WIDTH = 1200;
 const int SCREEN_HEIGHT = 600;
+int backgroundX = 0;
 
 float deltaTime = 1.0f / FPS; //time passed between frames in secs
 
 SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memory location which we can use later.
 SDL_Renderer* pRenderer = nullptr;
 bool isGameRunning = true;
+SDL_Texture* desertBackground = nullptr;
 
 float enemySpawnDelay = 1.0f;
 float enemySpawnTimer = 0.0f;
@@ -286,7 +288,6 @@ namespace Scorpio
 
 
 Scorpio::Sprite enemyPoison;
-Scorpio::Sprite desertBackground;
 Scorpio::Sprite cactus;
 
 Scorpio::Character playerSoldier;
@@ -326,16 +327,9 @@ bool Init()
 //Load textures to be displayed on the screen
 void Load()
 {
-	desertBackground = Scorpio::Sprite(pRenderer, "../Assets/textures/background.bmp");
-	enemyPoison = Scorpio::Sprite(pRenderer, "../Assets/textures/PoisonProjectile.png");
+	desertBackground = IMG_LoadTexture(pRenderer, "../Assets/textures/background.bmp");
 	int playerWidth = 131, playerHeight = 100, playerFrameCount = 4;
 	playerSoldier.sprite = Scorpio::Sprite(pRenderer, "../Assets/textures/playerWalk.png", playerWidth, playerHeight, playerFrameCount);
-	
-
-	//Set size and location of background
-	desertBackground.SetSize(SCREEN_WIDTH, SCREEN_HEIGHT);
-	desertBackground.position.x = 0;
-	desertBackground.position.y = 0;
 
 	//Set size and location of player soldier
 	playerSoldier.sprite.SetSize(125, 100);
@@ -645,12 +639,37 @@ void Update() // called every frame at FPS..FPS is declared at the top
 	}
 }
 
+//background scrolling
+void drawBackground()
+{
+	SDL_Rect dest;
+	int x;
+
+	for (x = backgroundX; x < SCREEN_WIDTH; x += SCREEN_WIDTH)
+	{
+		dest.x = x;
+		dest.y = 0;
+		dest.w = SCREEN_WIDTH;
+		dest.h = SCREEN_HEIGHT;
+
+		SDL_RenderCopy(pRenderer, desertBackground, NULL, &dest);
+	}
+}
+
+void doBackground()
+{
+	if (--backgroundX < -SCREEN_WIDTH)
+	{
+		backgroundX = 0;
+	}
+}
+
 void Draw() // draw to screen to show new game state to player
 {
 	SDL_SetRenderDrawColor(pRenderer, 5, 5, 15, 255);
 	SDL_RenderClear(pRenderer);
 	
-	desertBackground.Draw(pRenderer);
+	drawBackground();
 	
 	playerSoldier.sprite.Draw(pRenderer);
 	
@@ -703,6 +722,8 @@ int main(int argc, char* args[])
 		Update();
 
 		Draw();
+
+		doBackground();
 
 		if (const float frame_time = static_cast<float>(SDL_GetTicks()) - frame_start;
 			frame_time < DELAY_TIME)
