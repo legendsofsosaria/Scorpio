@@ -183,18 +183,22 @@ namespace Scorpio
 		void Shoot(bool towardRight, std::vector<Bullet>& container, Scorpio::Vec2 velocity)
 		{
 			//Create a new bullet
-			Scorpio::Sprite bulletSprite = Scorpio::Sprite(pRenderer, "../Assets/textures/playerprojectile.png");
-			
-			bulletSprite.SetSize(125 / 4, 100 / 4);
-			
-			//start bullet at player sprite position
-			bulletSprite.position.x = sprite.position.x;
+			Scorpio::Sprite bulletSprite;
 			if (towardRight)
 			{
+				bulletSprite = Scorpio::Sprite(pRenderer, "../Assets/textures/playerprojectile.png");
+				bulletSprite.SetSize(125 / 4, 100 / 4);
 				bulletSprite.position.x += sprite.GetSize().x;
-			} 
-			
-			bulletSprite.position.y = sprite.position.y + (sprite.GetSize().y * 0.7);
+				bulletSprite.position.y = sprite.position.y + (sprite.GetSize().y * 0.7);
+			}
+			else
+			{
+				int width = 50, height = 35, frames = 2;
+				bulletSprite = Scorpio::Sprite(pRenderer, "../Assets/textures/poisonprojectile.png", width, height, frames);
+				bulletSprite.SetSize(125 / 4, 100 / 4);
+				bulletSprite.position.x = sprite.position.x;
+				bulletSprite.position.y = sprite.position.y + ((sprite.GetSize().y * 0.5) + (bulletSprite.GetSize().y * 1.2));
+			}
 			
 			//set up our bullet class instance
 			Bullet playerBullet;
