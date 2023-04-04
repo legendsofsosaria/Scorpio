@@ -5,6 +5,7 @@
 #include <SDL.h> //Allows us to use features of SDL Library
 #include <SDL_Image.h> 
 #include <vector> //std::vector is an array with variable size
+#include <random> //needed for random seed
 
 /*
 Use SDL to open window, render some sprites at given locations and scale
@@ -24,8 +25,8 @@ SDL_Renderer* pRenderer = nullptr;
 bool isGameRunning = true;
 SDL_Texture* desertBackground = nullptr;
 
-float enemySpawnDelay = 1.0f;
-float enemySpawnTimer = 0.0f;
+float enemySpawnDelay = 2.0f;
+float enemySpawnTimer = 1.0f;
 
 namespace Scorpio
 {
@@ -470,8 +471,20 @@ const int SCREEN_RIGHT = SCREEN_WIDTH - playerSoldier.sprite.position.x;
 const int SCREEN_TOP = 155;
 const int SCREEN_BOTTOM = 435;
 
+
 void SpawnEnemy()
 {
+	/*
+	* Read about <random> from C++11 from
+	https://stackoverflow.com/questions/19665818/generate-random-numbers-using-c11-random-library
+	*/
+	std::random_device rd; // obtain a random number from hardware
+	std::mt19937 gen(rd()); // seed the generator
+	float minSpeed = 80;
+	float maxSpeed = 160;
+	std::uniform_real_distribution<float> dis(minSpeed, maxSpeed); //generate between the min and max speed we set
+	float random = dis(gen); //generate the number
+
 	Scorpio::Sprite enemyScorpion;
 	int scorpionWidth = 130, scorpionHeight = 96, scorpionFrameCount = 4;
 	enemyScorpion = Scorpio::Sprite(pRenderer, "../Assets/textures/Scorpion_walk_sheet.gif", scorpionWidth, scorpionHeight, scorpionFrameCount);
@@ -484,7 +497,7 @@ void SpawnEnemy()
 	Scorpio::Character enemy;
 	enemy.sprite = enemyScorpion;
 	enemy.fireRepeatDelay = 3.5;
-	enemy.moveSpeedPx = 80;
+	enemy.moveSpeedPx = random; //use our random #'s for speed
 	
 	//add to list of enemies
 	enemyContainer.push_back(enemy);
