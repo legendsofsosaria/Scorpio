@@ -4,8 +4,11 @@
 #include <Windows.h>
 #include <SDL.h> //Allows us to use features of SDL Library
 #include <SDL_Image.h> 
+#include <stdio.h>
+#include <string>
 #include <vector> //std::vector is an array with variable size
 #include <random> //needed for random seed
+#include <SDL_mixer.h> // for sound and music
 
 /*
 Use SDL to open window, render some sprites at given locations and scale
@@ -24,6 +27,15 @@ SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memo
 SDL_Renderer* pRenderer = nullptr;
 bool isGameRunning = true;
 SDL_Texture* desertBackground = nullptr;
+//The music that will be played
+Mix_Music* pMusic = nullptr;
+
+//The sound effects that will be used
+Mix_Chunk* pPlayerFire = nullptr;
+Mix_Chunk* pEnemyFire = nullptr;
+Mix_Chunk* pPlayerDeath = nullptr;
+Mix_Chunk* pEnemyDeath = nullptr;
+Mix_Chunk* pGameOver = nullptr;
 
 float enemySpawnDelay = 2.0f;
 float enemySpawnTimer = 1.0f;
@@ -179,6 +191,8 @@ namespace Scorpio
 		Sprite sprite;
 		float moveSpeedPx = 120.0f;
 		float fireRepeatDelay = 0.5f;
+		int hitPoints = 100;
+		int characterLives = 3;
 
 	private:
 		float fireRepeatTimer = 0.0f;
@@ -286,8 +300,6 @@ namespace Scorpio
 }
 
 //Creating sprite objects
-
-
 Scorpio::Sprite enemyPoison;
 Scorpio::Sprite cactus;
 
@@ -322,7 +334,64 @@ bool Init()
 	else
 		std::cout << "window rendering success\n";
 
+	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+	{
+		printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
+	}
+
 	return true;
+}
+
+bool LoadMedia() //Used both Lazy Foo and Parallel Realities tutorials
+{
+	//Loading success flag
+	bool success = true;
+
+	//Load music
+	pMusic = Mix_LoadMUS("../Assets/audio/desertmusic.mp3");
+	if (pMusic == NULL)
+	{
+		printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
+		success = false;
+	}
+
+	//Load sound effects
+	pPlayerFire = Mix_LoadWAV("../Assets/audio/playergun.mp3");
+	if (pPlayerFire == NULL)
+	{
+		printf("Failed to load player fire sound effect! SDL_mixer Error: %s\n", Mix_GetError());
+		success = false;
+	}
+
+	pEnemyFire = Mix_LoadWAV("../Assets/audio/enemygun.mp3");
+	if (pEnemyFire == NULL)
+	{
+		printf("Failed to load enemy fire sound effect! SDL_mixer Error: %s\n", Mix_GetError());
+		success = false;
+	}
+
+	pPlayerDeath = Mix_LoadWAV("../Assets/audio/characterdeath.mp3");
+	if (pPlayerDeath == NULL)
+	{
+		printf("Failed to load player death sound effect! SDL_mixer Error: %s\n", Mix_GetError());
+		success = false;
+	}
+
+	pEnemyDeath = Mix_LoadWAV("../Assets/audio/scorpionsplat.mp3");
+	if (pEnemyDeath == NULL)
+	{
+		printf("Failed to load enemy death sound effect! SDL_mixer Error: %s\n", Mix_GetError());
+		success = false;
+	}
+
+	pGameOver = Mix_LoadWAV("../Assets/audio/gameover.mp3");
+	if (pGameOver == NULL)
+	{
+		printf("Failed to load game over sound effect! SDL_mixer Error: %s\n", Mix_GetError());
+		success = false;
+	}
+
+	return success;
 }
 
 //Load textures to be displayed on the screen
@@ -345,6 +414,8 @@ bool isDownPressed = false;
 bool isLeftPressed = false;
 bool isRightPressed = false;
 bool isShootPressed = false;
+bool isSoundPressed = false;
+bool isQuitPressed = false;
 
 void Input() //take player input
 {
@@ -404,6 +475,16 @@ void Input() //take player input
 				isShootPressed = true;
 				break;
 			}
+			case(SDL_SCANCODE_M):
+			{
+				isSoundPressed = true;
+				break;
+			}
+			case(SDL_SCANCODE_Q):
+			{
+				isQuitPressed = true;
+				break;
+			}
 			}
 			break;
 		}
@@ -457,12 +538,47 @@ void Input() //take player input
 				isShootPressed = false;
 				break;
 			}
+			case(SDL_SCANCODE_M):
+			{
+				isSoundPressed = false;
+				break;
+			}
 			}
 			break;
 		}
 		break;
 		}
 	}
+}
+
+void Close() //close the game
+{
+	//Free the sound effects
+	Mix_FreeChunk(pPlayerFire);
+	Mix_FreeChunk(pEnemyFire);
+	Mix_FreeChunk(pPlayerDeath);
+	Mix_FreeChunk(pEnemyDeath);
+	Mix_FreeChunk(pGameOver);
+	pPlayerFire = NULL;
+	pEnemyFire = NULL;
+	pPlayerDeath = NULL;
+	pEnemyDeath = NULL;
+	pGameOver = NULL;
+
+	//Free the music
+	Mix_FreeMusic(pMusic);
+	pMusic = NULL;
+
+	//Destroy window    
+	SDL_DestroyRenderer(pRenderer);
+	SDL_DestroyWindow(pWindow);
+	pRenderer = NULL;
+	pWindow = NULL;
+
+	//Quit SDL subsystems
+	Mix_Quit();
+	IMG_Quit();
+	SDL_Quit();
 }
 
 // Define screen boundaries
@@ -559,13 +675,44 @@ void UpdatePlayer()
 		Scorpio::Vec2 velocity = { 400,0 };
 		//passing bulletContainer by reference to add bullets to this container specifically
 		playerSoldier.Shoot(toRight, playerBulletContainer, velocity);
+		Mix_PlayChannel(-1, pPlayerFire, 0);
 	}
 
 	playerSoldier.Move(inputVector);
 	playerSoldier.Update();
 }
+
 void Update() // called every frame at FPS..FPS is declared at the top
 {
+	if (isQuitPressed)
+	{
+		Close();
+	}
+	if (isSoundPressed)
+	{
+		//If there is no music playing
+		if (Mix_PlayingMusic() == 0)
+		{
+			//Play the music
+			Mix_PlayMusic(pMusic, -1);
+		}
+		//If music is being played
+		else
+		{
+			//If the music is paused
+			if (Mix_PausedMusic() == 1)
+			{
+				//Resume the music
+				Mix_ResumeMusic();
+			}
+			//If the music is playing
+			else
+			{
+				//Pause the music
+				Mix_PauseMusic();
+			}
+		}
+	}
 	UpdatePlayer();
 	
 	//update player bullets 
@@ -594,6 +741,7 @@ void Update() // called every frame at FPS..FPS is declared at the top
 			bool toRight = false;
 			Scorpio::Vec2 velocity = { -200, 0 };
 			enemy.Shoot(toRight, enemyBulletContainer,velocity);
+			Mix_PlayChannel(-1, pEnemyFire, 0);
 		}
 	}
 	
@@ -615,7 +763,14 @@ void Update() // called every frame at FPS..FPS is declared at the top
 		if (Scorpio::AreSpritesOverlapping(playerSoldier.sprite, enemyBullet))
 		{
 			std::cout << "Player was hit" << std::endl;
-			playerSoldier.sprite.rotationDegrees += 90.0; //the place to decrement HP
+			playerSoldier.hitPoints = 0;
+			playerSoldier.characterLives--;
+			Mix_PlayChannel(-1, pPlayerDeath, 0);
+
+			/*if (playerSoldier.characterLives <= 0)
+			{
+				RestartGame();
+			}*/
 
 			//remove this element from container.
 			bulletIterator = enemyBulletContainer.erase(bulletIterator); //erase function returns new index
@@ -638,6 +793,7 @@ void Update() // called every frame at FPS..FPS is declared at the top
 
 				//destroy enemy
 				enemyIterator = enemyContainer.erase(enemyIterator);
+				Mix_PlayChannel(-1, pEnemyDeath, 0);
 
 				//if last object is destroyed, then stop comparing
 				if (bulletIterator == playerBulletContainer.end())
@@ -708,6 +864,8 @@ void Draw() // draw to screen to show new game state to player
 	SDL_RenderPresent(pRenderer);
 }
 
+void RestartGame();
+
 /**
  * \brief Program Entry Point
  */
@@ -724,6 +882,8 @@ int main(int argc, char* args[])
 	isGameRunning = Init();
 
 	Load();
+	LoadMedia();
+	Mix_PlayMusic(pMusic, -1);
 
 	// Main Game Loop
 	while (isGameRunning)
