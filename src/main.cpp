@@ -38,7 +38,7 @@ Mix_Chunk* pEnemyDeath = nullptr;
 Mix_Chunk* pGameOver = nullptr;
 
 float enemySpawnDelay = 2.0f;
-float enemySpawnTimer = 1.0f;
+float enemySpawnTimer = 0.0f;
 
 namespace Scorpio
 {
@@ -633,8 +633,6 @@ void UpdatePlayer()
 		if (playerSoldier.sprite.position.y < SCREEN_TOP)
 		{
 			playerSoldier.sprite.position.y = SCREEN_TOP;
-			
-
 		}
 	}
 	
@@ -766,11 +764,14 @@ void Update() // called every frame at FPS..FPS is declared at the top
 			playerSoldier.hitPoints = 0;
 			playerSoldier.characterLives--;
 			Mix_PlayChannel(-1, pPlayerDeath, 0);
+			//Add heart sprites here and remove one for each death
 
-			/*if (playerSoldier.characterLives <= 0)
+			if (playerSoldier.characterLives <= 0)
 			{
-				RestartGame();
-			}*/
+				Mix_PauseMusic();
+				Mix_PlayChannel(-1, pGameOver, 0);
+				//Need to add some way to end the game loop and go back to a title screen
+			}
 
 			//remove this element from container.
 			bulletIterator = enemyBulletContainer.erase(bulletIterator); //erase function returns new index
@@ -809,7 +810,7 @@ void Update() // called every frame at FPS..FPS is declared at the top
 }
 
 //background scrolling
-void drawBackground()
+static void drawBackground()
 {
 	SDL_Rect dest;
 	int x;
@@ -825,7 +826,7 @@ void drawBackground()
 	}
 }
 
-void doBackground()
+static void doBackground()
 {
 	if (--backgroundX < -SCREEN_WIDTH)
 	{
@@ -863,8 +864,6 @@ void Draw() // draw to screen to show new game state to player
 	//Show the hidden space we were drawing-to called the backbuffer.
 	SDL_RenderPresent(pRenderer);
 }
-
-void RestartGame();
 
 /**
  * \brief Program Entry Point
