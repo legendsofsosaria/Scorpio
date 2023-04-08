@@ -198,6 +198,8 @@ namespace Scorpio
 		float fireRepeatDelay = 0.5f;
 		int hitPoints = 100;
 		int characterLives = 3;
+		int score = 0;
+		int highScore = 0;
 
 	private:
 		float fireRepeatTimer = 0.0f;
@@ -818,6 +820,7 @@ void Update() // called every frame at FPS..FPS is declared at the top
 				//destroy enemy
 				enemyIterator = enemyContainer.erase(enemyIterator);
 				Mix_PlayChannel(-1, pEnemyDeath, 0);
+				playerSoldier.score += 10; //not sure how many points we want to award, but let's start with 10 for each monster
 
 				//if last object is destroyed, then stop comparing
 				if (bulletIterator == playerBulletContainer.end())
