@@ -169,6 +169,11 @@ namespace Scorpio
 			Vec2 returnVec = { dst.w, dst.h };
 			return returnVec;
 		}
+
+		void Cleanup()
+		{
+			SDL_DestroyTexture(pTexture);
+		}
 	}; //struct Sprite
 
 	class Bullet
@@ -553,6 +558,24 @@ void Input() //take player input
 
 void Close() //close the game
 {
+	//iterate through all of the sprites and call cleanup
+	for (auto& bullet : playerBulletContainer)
+	{
+		bullet.sprite.Cleanup();
+	}
+
+	for (auto& bullet : enemyBulletContainer)
+	{
+		bullet.sprite.Cleanup();
+	}
+
+	for (auto& enemy : enemyContainer)
+	{
+		enemy.sprite.Cleanup();
+	}
+
+	playerSoldier.sprite.Cleanup();
+
 	//Free the sound effects
 	Mix_FreeChunk(pPlayerFire);
 	Mix_FreeChunk(pEnemyFire);
