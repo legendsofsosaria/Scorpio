@@ -27,6 +27,8 @@ SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memo
 SDL_Renderer* pRenderer = nullptr;
 bool isGameRunning = true;
 SDL_Texture* desertBackground = nullptr;
+
+
 //The music that will be played
 Mix_Music* pMusic = nullptr;
 
@@ -36,6 +38,8 @@ Mix_Chunk* pEnemyFire = nullptr;
 Mix_Chunk* pPlayerDeath = nullptr;
 Mix_Chunk* pEnemyDeath = nullptr;
 Mix_Chunk* pGameOver = nullptr;
+
+int currentAudioVolume = MIX_MAX_VOLUME/2;
 
 float enemySpawnDelay = 2.0f;
 float enemySpawnTimer = 0.0f;
@@ -341,7 +345,10 @@ bool Init()
 	else
 		std::cout << "window rendering success\n";
 
-	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0)
+	int playbackFrequency = 44100;
+	int chunkSize = 2048;
+	int channels = 2;
+	if (Mix_OpenAudio(playbackFrequency, MIX_DEFAULT_FORMAT, channels, chunkSize) < 0)
 	{
 		printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
 	}
@@ -413,6 +420,14 @@ void Load()
 	playerSoldier.sprite.position.x = 100;
 	playerSoldier.sprite.position.y = 430;
 
+}
+
+//Called once after Load() and before first Update()
+void Start()
+{
+	Mix_Volume(-1, currentAudioVolume);
+	Mix_VolumeMusic(currentAudioVolume);
+	Mix_PlayMusic(pMusic, -1);
 }
 
 //input variables
@@ -490,6 +505,24 @@ void Input() //take player input
 			case(SDL_SCANCODE_Q):
 			{
 				isQuitPressed = true;
+				break;
+			}
+			case(SDL_SCANCODE_EQUALS):
+			{
+				//increase volume
+				currentAudioVolume = min(currentAudioVolume + 10, MIX_MAX_VOLUME); //min(A,B) takes the smaller of A or B
+				Mix_Volume(-1, currentAudioVolume);
+				Mix_VolumeMusic(currentAudioVolume);
+				std::cout << "volume: " << currentAudioVolume << std::endl;
+				break;
+			}
+			case(SDL_SCANCODE_MINUS):
+			{
+				//dncrease volume
+				currentAudioVolume = max(currentAudioVolume - 10, 0); //max(A,B) takes the larger of A or B
+				Mix_Volume(-1, currentAudioVolume);
+				Mix_VolumeMusic(currentAudioVolume);
+				std::cout << "volume: " << currentAudioVolume << std::endl;
 				break;
 			}
 			}
@@ -698,7 +731,7 @@ void UpdatePlayer()
 		Scorpio::Vec2 velocity = { 400,0 };
 		//passing bulletContainer by reference to add bullets to this container specifically
 		playerSoldier.Shoot(toRight, playerBulletContainer, velocity);
-		Mix_PlayChannel(-1, pPlayerFire, 0);
+		Mix_PlayChannel(-1, pPlayerFire, 0); //play sound
 	}
 
 	playerSoldier.Move(inputVector);
@@ -907,8 +940,12 @@ int main(int argc, char* args[])
 	isGameRunning = Init();
 
 	Load();
+
 	LoadMedia();
-	Mix_PlayMusic(pMusic, -1);
+	
+	Start();
+	
+	
 
 	// Main Game Loop
 	while (isGameRunning)
