@@ -311,14 +311,16 @@ namespace Scorpio
 }
 
 //Creating sprite objects
-Scorpio::Sprite enemyPoison;
-Scorpio::Sprite cactus;
+Scorpio::Sprite playerHealthBar1;
+Scorpio::Sprite playerHealthBar2;
+Scorpio::Sprite playerHealthBar3;
 
 Scorpio::Character playerSoldier;
 std::vector<Scorpio::Bullet> playerBulletContainer; //std::vector is a class that allows changing size. This is a dynamic array of Scorpio::Sprite
 
 std::vector<Scorpio::Character> enemyContainer; //container of all enemy ships
 std::vector<Scorpio::Bullet> enemyBulletContainer; //container of all enemy bullets(poison)
+
 
 //Initialize opens a window and sets up renderer
 bool Init()
@@ -414,12 +416,30 @@ void Load()
 	desertBackground = IMG_LoadTexture(pRenderer, "../Assets/textures/background.bmp");
 	int playerWidth = 131, playerHeight = 100, playerFrameCount = 4;
 	playerSoldier.sprite = Scorpio::Sprite(pRenderer, "../Assets/textures/playerWalk.png", playerWidth, playerHeight, playerFrameCount);
+	
+	
+	playerHealthBar1 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_FULL.png");
+	playerHealthBar2 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_FULL.png");
+	playerHealthBar3 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_FULL.png");
 
+	//playerNullHealth = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
+	
 	//Set size and location of player soldier
 	playerSoldier.sprite.SetSize(125, 100);
 	playerSoldier.sprite.position.x = 100;
 	playerSoldier.sprite.position.y = 430;
 
+	playerHealthBar1.SetSize(50, 50);
+	playerHealthBar1.position.x = 1000;
+	playerHealthBar1.position.y = 50;
+
+	playerHealthBar2.SetSize(50, 50);
+	playerHealthBar2.position.x = 1050;
+	playerHealthBar2.position.y = 50;
+
+	playerHealthBar3.SetSize(50, 50);
+	playerHealthBar3.position.x = 1100;
+	playerHealthBar3.position.y = 50;
 }
 
 //Called once after Load() and before first Update()
@@ -821,7 +841,33 @@ void Update() // called every frame at FPS..FPS is declared at the top
 			std::cout << "Player was hit" << std::endl;
 			playerSoldier.hitPoints = 0;
 			playerSoldier.characterLives--;
+
+			if (playerSoldier.characterLives == 2)
+			{
+				playerHealthBar3 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
+				playerHealthBar3.SetSize(50, 50);
+				playerHealthBar3.position.x = 1100;
+				playerHealthBar3.position.y = 50;
+			}
+			else if(playerSoldier.characterLives == 1)
+			{
+				playerHealthBar2 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
+				playerHealthBar2.SetSize(50, 50);
+				playerHealthBar2.position.x = 1050;
+				playerHealthBar2.position.y = 50;
+			}
+			else
+			{
+				playerHealthBar1 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
+				playerHealthBar1.SetSize(50, 50);
+				playerHealthBar1.position.x = 1000;
+				playerHealthBar1.position.y = 50;
+			}
+			
+			
+			
 			Mix_PlayChannel(-1, pPlayerDeath, 0);
+
 			//Add heart sprites here and remove one for each death
 
 			if (playerSoldier.characterLives <= 0)
@@ -902,6 +948,10 @@ void Draw() // draw to screen to show new game state to player
 	
 	playerSoldier.sprite.Draw(pRenderer);
 	
+	playerHealthBar1.Draw(pRenderer);
+	playerHealthBar2.Draw(pRenderer);
+	playerHealthBar3.Draw(pRenderer);
+
 	//draw all bullets onto the screen
 	for (int i = 0; i < playerBulletContainer.size(); i++)
 	{
