@@ -9,6 +9,7 @@
 #include <vector> //std::vector is an array with variable size
 #include <random> //needed for random seed
 #include <SDL_mixer.h> // for sound and music
+#include <SDL_ttf.h> // for font
 
 /*
 Use SDL to open window, render some sprites at given locations and scale
@@ -40,6 +41,11 @@ Mix_Chunk* pEnemyDeath = nullptr;
 Mix_Chunk* pGameOver = nullptr;
 
 int currentAudioVolume = MIX_MAX_VOLUME/2;
+
+//UI
+TTF_Font* uiFont;
+int scoreCurrent = 0;
+int highScoreCurrent = 0;
 
 float enemySpawnDelay = 2.0f;
 float enemySpawnTimer = 0.0f;
@@ -75,6 +81,16 @@ namespace Scorpio
 			pTexture = nullptr;
 			src = SDL_Rect{ 0,0,0,0 };
 			dst = SDL_Rect{ 0,0,0,0 };
+		}
+
+		Sprite(SDL_Renderer* renderer, TTF_Font* font, const char* text, SDL_Color color) : Sprite()
+		{
+			SDL_Surface* pSurface = TTF_RenderText_Solid(font, text, color);
+			pTexture = SDL_CreateTextureFromSurface(renderer, pSurface);
+			SDL_FreeSurface(pSurface);
+			TTF_SizeText(font, text, &src.w, &src.h);
+			dst.w = src.w;
+			dst.h = src.h;
 		}
 
 		Sprite(SDL_Renderer* renderer, const char* filePathToLoad)
@@ -202,8 +218,6 @@ namespace Scorpio
 		float fireRepeatDelay = 0.5f;
 		int hitPoints = 100;
 		int characterLives = 3;
-		int score = 0;
-		int highScore = 0;
 
 	private:
 		float fireRepeatTimer = 0.0f;
@@ -314,6 +328,8 @@ namespace Scorpio
 Scorpio::Sprite playerHealthBar1;
 Scorpio::Sprite playerHealthBar2;
 Scorpio::Sprite playerHealthBar3;
+Scorpio::Sprite scoreSprite;
+Scorpio::Sprite highScoreSprite;
 
 Scorpio::Character playerSoldier;
 std::vector<Scorpio::Bullet> playerBulletContainer; //std::vector is a class that allows changing size. This is a dynamic array of Scorpio::Sprite
@@ -336,16 +352,26 @@ bool Init()
 		SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
 	if (pWindow == NULL) //Error checking
-		std::cout << "window creation failed: " << SDL_GetError();
+	{
+		std::cout << "window creation failed: " << SDL_GetError() << std::endl;
+		return false;
+	}
 	else
+	{
 		std::cout << "window creation success\n";
+	}
 
 	pRenderer = SDL_CreateRenderer(pWindow, -1, 0);
 
 	if (pRenderer == NULL) //Error checking
-		std::cout << "window rendering failed: " << SDL_GetError();
+	{
+		std::cout << "window rendering failed: " << SDL_GetError() << std::endl;
+		return false;
+	}
 	else
+	{
 		std::cout << "window rendering success\n";
+	}
 
 	int playbackFrequency = 44100;
 	int chunkSize = 2048;
@@ -353,8 +379,15 @@ bool Init()
 	if (Mix_OpenAudio(playbackFrequency, MIX_DEFAULT_FORMAT, channels, chunkSize) < 0)
 	{
 		printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
+		return false;
 	}
 
+	TTF_Init();
+	if (TTF_Init() != 0)
+	{
+		std::cout << "TTF_Init failed: " << SDL_GetError() << std::endl;
+		return false;
+	}
 	return true;
 }
 
@@ -407,6 +440,14 @@ bool LoadMedia() //Used both Lazy Foo and Parallel Realities tutorials
 		success = false;
 	}
 
+	const char* fontFile = ("../Assets/font/font.ttf");
+	uiFont = TTF_OpenFont(fontFile, 48);
+
+	if (uiFont == NULL)
+	{
+		std::cout << "TTF_OpenFont failed to load file. " << SDL_GetError() << std::endl;
+	}
+
 	return success;
 }
 
@@ -429,17 +470,14 @@ void Load()
 	playerSoldier.sprite.position.x = 100;
 	playerSoldier.sprite.position.y = 430;
 
-	playerHealthBar1.SetSize(50, 50);
-	playerHealthBar1.position.x = 1000;
-	playerHealthBar1.position.y = 50;
+	playerHealthBar1.position.x = 500;
+	playerHealthBar1.position.y = 15;
 
-	playerHealthBar2.SetSize(50, 50);
-	playerHealthBar2.position.x = 1050;
-	playerHealthBar2.position.y = 50;
+	playerHealthBar2.position.x = 560;
+	playerHealthBar2.position.y = 15;
 
-	playerHealthBar3.SetSize(50, 50);
-	playerHealthBar3.position.x = 1100;
-	playerHealthBar3.position.y = 50;
+	playerHealthBar3.position.x = 620;
+	playerHealthBar3.position.y = 15;
 }
 
 //Called once after Load() and before first Update()
@@ -652,6 +690,8 @@ void Close() //close the game
 	SDL_DestroyWindow(pWindow);
 	pRenderer = NULL;
 	pWindow = NULL;
+	TTF_CloseFont(uiFont);
+	TTF_Quit();
 
 	//Quit SDL subsystems
 	Mix_Quit();
@@ -758,8 +798,69 @@ void UpdatePlayer()
 	playerSoldier.Update();
 }
 
+void AddScore(int scoreToAdd)
+{
+	scoreCurrent += scoreToAdd;
+}
+
+bool isSpriteOffscreen(Scorpio::Sprite sprite)
+{
+	if (sprite.position.x + sprite.GetSize().x < 0)
+		return true;
+	if (sprite.position.x > SCREEN_WIDTH)
+		return true;
+	if (sprite.position.y + sprite.GetSize().y < 0)
+		return true;
+	if (sprite.position.y > SCREEN_HEIGHT)
+		return true;
+
+	return false;
+}
+
+void RemoveOffscreenSprites()
+{
+	//for each player bullet sprite in container, if offscreen, remove from container
+	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = playerBulletContainer.begin(); bulletIterator != playerBulletContainer.end();)
+	{
+		if (isSpriteOffscreen(bulletIterator->sprite))
+		{
+			bulletIterator = playerBulletContainer.erase(bulletIterator);
+		}
+		else
+		{
+			bulletIterator++;
+		}
+	}
+	//for each sprite in container, if offscreen, remove from container
+	for (auto enemyIterator = enemyContainer.begin(); enemyIterator != enemyContainer.end();)
+	{
+		if (isSpriteOffscreen(enemyIterator->sprite))
+		{
+			enemyIterator = enemyContainer.erase(enemyIterator);
+		}
+		else
+		{
+			enemyIterator++;
+		}
+	}
+	//for each enemy bullet in container, if offscreen, remove from container
+	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = enemyBulletContainer.begin(); bulletIterator != enemyBulletContainer.end();)
+	{
+		if (isSpriteOffscreen(bulletIterator->sprite))
+		{
+			bulletIterator = enemyBulletContainer.erase(bulletIterator);
+		}
+		else
+		{
+			bulletIterator++;
+		}
+	}
+}
+
 void Update() // called every frame at FPS..FPS is declared at the top
 {
+	RemoveOffscreenSprites();
+
 	if (isQuitPressed)
 	{
 		Close();
@@ -845,23 +946,20 @@ void Update() // called every frame at FPS..FPS is declared at the top
 			if (playerSoldier.characterLives == 2)
 			{
 				playerHealthBar3 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
-				playerHealthBar3.SetSize(50, 50);
-				playerHealthBar3.position.x = 1100;
-				playerHealthBar3.position.y = 50;
+				playerHealthBar3.position.x = 620;
+				playerHealthBar3.position.y = 15;
 			}
 			else if(playerSoldier.characterLives == 1)
 			{
 				playerHealthBar2 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
-				playerHealthBar2.SetSize(50, 50);
-				playerHealthBar2.position.x = 1050;
-				playerHealthBar2.position.y = 50;
+				playerHealthBar2.position.x = 560;
+				playerHealthBar2.position.y = 15;
 			}
 			else
 			{
 				playerHealthBar1 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
-				playerHealthBar1.SetSize(50, 50);
-				playerHealthBar1.position.x = 1000;
-				playerHealthBar1.position.y = 50;
+				playerHealthBar1.position.x = 500;
+				playerHealthBar1.position.y = 15;
 			}
 			
 			
@@ -899,7 +997,7 @@ void Update() // called every frame at FPS..FPS is declared at the top
 				//destroy enemy
 				enemyIterator = enemyContainer.erase(enemyIterator);
 				Mix_PlayChannel(-1, pEnemyDeath, 0);
-				playerSoldier.score += 10; //not sure how many points we want to award, but let's start with 10 for each monster
+				AddScore(10); //not sure how many points we want to award, but let's start with 10 for each monster
 
 				//if last object is destroyed, then stop comparing
 				if (bulletIterator == playerBulletContainer.end())
@@ -969,6 +1067,21 @@ void Draw() // draw to screen to show new game state to player
 	{
 		enemyContainer[i].sprite.Draw(pRenderer);
 	}
+
+	std::string scoreText = "Score: " + std::to_string(scoreCurrent);
+	SDL_Color color = { 0, 0, 0, 0 };
+	scoreSprite.Cleanup();
+	scoreSprite = Scorpio::Sprite(pRenderer, uiFont, scoreText.c_str(), color);
+	scoreSprite.SetPosition(850, 3);
+	scoreSprite.SetSize(100, 65);
+	scoreSprite.Draw(pRenderer);
+
+	std::string highScoreText = "High Score: " + std::to_string(highScoreCurrent);
+	highScoreSprite.Cleanup();
+	highScoreSprite = Scorpio::Sprite(pRenderer, uiFont, highScoreText.c_str(), color);
+	highScoreSprite.SetPosition(150, 3);
+	highScoreSprite.SetSize(150, 65);
+	highScoreSprite.Draw(pRenderer);
 
 	//Show the hidden space we were drawing-to called the backbuffer.
 	SDL_RenderPresent(pRenderer);
