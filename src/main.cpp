@@ -27,6 +27,7 @@ float deltaTime = 1.0f / FPS; //time passed between frames in secs
 SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memory location which we can use later.
 SDL_Renderer* pRenderer = nullptr;
 bool isGameRunning = true;
+bool isGameOver = false;
 SDL_Texture* desertBackground = nullptr;
 
 
@@ -40,12 +41,13 @@ Mix_Chunk* pPlayerDeath = nullptr;
 Mix_Chunk* pEnemyDeath = nullptr;
 Mix_Chunk* pGameOver = nullptr;
 
-int currentAudioVolume = MIX_MAX_VOLUME/2;
+int currentAudioVolume = MIX_MAX_VOLUME / 2;
 
 //UI
 TTF_Font* uiFont;
 int scoreCurrent = 0;
 int highScoreCurrent = 0;
+int characterLives = 3;
 
 float enemySpawnDelay = 2.0f;
 float enemySpawnTimer = 0.0f;
@@ -217,7 +219,6 @@ namespace Scorpio
 		float moveSpeedPx = 120.0f;
 		float fireRepeatDelay = 0.5f;
 		int hitPoints = 100;
-		int characterLives = 3;
 
 	private:
 		float fireRepeatTimer = 0.0f;
@@ -228,7 +229,7 @@ namespace Scorpio
 			sprite.position.x += input.x * (moveSpeedPx * deltaTime);
 			sprite.position.y += input.y * (moveSpeedPx * deltaTime);
 		}
-		
+
 		//only handles left and right shooting
 		void Shoot(bool towardRight, std::vector<Bullet>& container, Scorpio::Vec2 velocity)
 		{
@@ -250,19 +251,19 @@ namespace Scorpio
 				bulletSprite.position.x = sprite.position.x;
 				bulletSprite.position.y = sprite.position.y + ((sprite.GetSize().y * 0.5) + (bulletSprite.GetSize().y * 1.2));
 			}
-			
+
 			//set up our bullet class instance
 			Bullet playerBullet;
 			playerBullet.sprite = bulletSprite;
 			playerBullet.velocity = velocity;
-			
+
 			//add bullet to container (to the end of the array)
 			container.push_back(playerBullet);
 
 			//reset cooldown
 			fireRepeatTimer = fireRepeatDelay;
 		}
-		
+
 		void Update()
 		{
 			//tick down the time for our firing cooldown
@@ -330,6 +331,9 @@ Scorpio::Sprite playerHealthBar2;
 Scorpio::Sprite playerHealthBar3;
 Scorpio::Sprite scoreSprite;
 Scorpio::Sprite highScoreSprite;
+Scorpio::Sprite gameOverSprite;
+Scorpio::Sprite gameOverSprite2;
+Scorpio::Sprite gameOverSprite3;
 
 Scorpio::Character playerSoldier;
 std::vector<Scorpio::Bullet> playerBulletContainer; //std::vector is a class that allows changing size. This is a dynamic array of Scorpio::Sprite
@@ -451,24 +455,11 @@ bool LoadMedia() //Used both Lazy Foo and Parallel Realities tutorials
 	return success;
 }
 
-//Load textures to be displayed on the screen
-void Load()
+void loadHealthSprites()
 {
-	desertBackground = IMG_LoadTexture(pRenderer, "../Assets/textures/background.bmp");
-	int playerWidth = 131, playerHeight = 100, playerFrameCount = 4;
-	playerSoldier.sprite = Scorpio::Sprite(pRenderer, "../Assets/textures/playerWalk.png", playerWidth, playerHeight, playerFrameCount);
-	
-	
 	playerHealthBar1 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_FULL.png");
 	playerHealthBar2 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_FULL.png");
 	playerHealthBar3 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_FULL.png");
-
-	//playerNullHealth = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
-	
-	//Set size and location of player soldier
-	playerSoldier.sprite.SetSize(125, 100);
-	playerSoldier.sprite.position.x = 100;
-	playerSoldier.sprite.position.y = 430;
 
 	playerHealthBar1.position.x = 500;
 	playerHealthBar1.position.y = 15;
@@ -478,6 +469,20 @@ void Load()
 
 	playerHealthBar3.position.x = 620;
 	playerHealthBar3.position.y = 15;
+}
+
+//Load textures to be displayed on the screen
+void Load()
+{
+	loadHealthSprites();
+	desertBackground = IMG_LoadTexture(pRenderer, "../Assets/textures/background.bmp");
+	int playerWidth = 131, playerHeight = 100, playerFrameCount = 4;
+	playerSoldier.sprite = Scorpio::Sprite(pRenderer, "../Assets/textures/playerWalk.png", playerWidth, playerHeight, playerFrameCount);
+
+	//Set size and location of player soldier
+	playerSoldier.sprite.SetSize(125, 100);
+	playerSoldier.sprite.position.x = 100;
+	playerSoldier.sprite.position.y = 430;
 }
 
 //Called once after Load() and before first Update()
@@ -496,6 +501,7 @@ bool isRightPressed = false;
 bool isShootPressed = false;
 bool isSoundPressed = false;
 bool isQuitPressed = false;
+bool isRestartPressed = false;
 
 void Input() //take player input
 {
@@ -558,11 +564,6 @@ void Input() //take player input
 			case(SDL_SCANCODE_M):
 			{
 				isSoundPressed = true;
-				break;
-			}
-			case(SDL_SCANCODE_Q):
-			{
-				isQuitPressed = true;
 				break;
 			}
 			case(SDL_SCANCODE_EQUALS):
@@ -732,10 +733,10 @@ void SpawnEnemy()
 	enemy.sprite = enemyScorpion;
 	enemy.fireRepeatDelay = 3.5;
 	enemy.moveSpeedPx = random; //use our random #'s for speed
-	
+
 	//add to list of enemies
 	enemyContainer.push_back(enemy);
-	
+
 	//rest timer
 	enemySpawnTimer = enemySpawnDelay;
 }
@@ -753,7 +754,7 @@ void UpdatePlayer()
 			playerSoldier.sprite.position.y = SCREEN_TOP;
 		}
 	}
-	
+
 	if (isDownPressed)
 	{
 		inputVector.y = 1;
@@ -763,7 +764,7 @@ void UpdatePlayer()
 			playerSoldier.sprite.position.y = SCREEN_BOTTOM;
 		}
 	}
-	
+
 	if (isLeftPressed)
 	{
 		inputVector.x = -1;
@@ -773,7 +774,7 @@ void UpdatePlayer()
 			playerSoldier.sprite.position.x = SCREEN_LEFT;
 		}
 	}
-	
+
 	if (isRightPressed)
 	{
 		inputVector.x = 1;
@@ -783,7 +784,7 @@ void UpdatePlayer()
 			playerSoldier.sprite.position.x = SCREEN_RIGHT;
 		}
 	}
-	
+
 	//if shooting and our shooting is off cooldown
 	if (isShootPressed && playerSoldier.CanShoot())
 	{
@@ -857,14 +858,23 @@ void RemoveOffscreenSprites()
 	}
 }
 
+void spawnEnemies()
+{
+	//spawn enemies on timer and update timer
+	if (enemySpawnTimer <= 0)
+	{
+		SpawnEnemy();
+	}
+	else
+	{
+		enemySpawnTimer -= deltaTime;
+	}
+}
+
 void Update() // called every frame at FPS..FPS is declared at the top
 {
 	RemoveOffscreenSprites();
 
-	if (isQuitPressed)
-	{
-		Close();
-	}
 	if (isSoundPressed)
 	{
 		//If there is no music playing
@@ -891,7 +901,7 @@ void Update() // called every frame at FPS..FPS is declared at the top
 		}
 	}
 	UpdatePlayer();
-	
+
 	//update player bullets 
 	for (int i = 0; i < playerBulletContainer.size(); i++)
 	{
@@ -917,21 +927,11 @@ void Update() // called every frame at FPS..FPS is declared at the top
 		{
 			bool toRight = false;
 			Scorpio::Vec2 velocity = { -200, 0 };
-			enemy.Shoot(toRight, enemyBulletContainer,velocity);
+			enemy.Shoot(toRight, enemyBulletContainer, velocity);
 			Mix_PlayChannel(-1, pEnemyFire, 0);
 		}
 	}
-	
-	//spawn enemies on timer and update timer
-	if (enemySpawnTimer <= 0)
-	{
-		SpawnEnemy();
-	}
-	else
-	{
-		enemySpawnTimer -= deltaTime;
-	}
-	
+
 	//collision detection
 	//enemy bullets and player
 	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = enemyBulletContainer.begin(); bulletIterator != enemyBulletContainer.end();)
@@ -941,15 +941,15 @@ void Update() // called every frame at FPS..FPS is declared at the top
 		{
 			std::cout << "Player was hit" << std::endl;
 			playerSoldier.hitPoints = 0;
-			playerSoldier.characterLives--;
+			characterLives--;
 
-			if (playerSoldier.characterLives == 2)
+			if (characterLives == 2)
 			{
 				playerHealthBar3 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
 				playerHealthBar3.position.x = 620;
 				playerHealthBar3.position.y = 15;
 			}
-			else if(playerSoldier.characterLives == 1)
+			else if (characterLives == 1)
 			{
 				playerHealthBar2 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_EMPTY.png");
 				playerHealthBar2.position.x = 560;
@@ -961,25 +961,21 @@ void Update() // called every frame at FPS..FPS is declared at the top
 				playerHealthBar1.position.x = 500;
 				playerHealthBar1.position.y = 15;
 			}
-			
-			
-			
+
 			Mix_PlayChannel(-1, pPlayerDeath, 0);
 
-			//Add heart sprites here and remove one for each death
-
-			if (playerSoldier.characterLives <= 0)
+			if (characterLives <= 0)
 			{
 				Mix_PauseMusic();
 				Mix_PlayChannel(-1, pGameOver, 0);
-				//Need to add some way to end the game loop and go back to a title screen
+				isGameOver = true;
 			}
 
 			//remove this element from container.
 			bulletIterator = enemyBulletContainer.erase(bulletIterator); //erase function returns new index
 		}
 		if (bulletIterator != enemyBulletContainer.end())  bulletIterator++;
-		
+
 	}
 
 	//for every player bullet
@@ -1011,6 +1007,21 @@ void Update() // called every frame at FPS..FPS is declared at the top
 
 	}
 }
+void resetGame()
+{
+	//Check if the score was higher than the current high score. If it is, then high score will become equal to the score
+	if (scoreCurrent > highScoreCurrent)
+	{
+		highScoreCurrent = scoreCurrent;
+	}
+
+	scoreCurrent = 0;
+	characterLives = 3;
+	isGameOver = false;
+	loadHealthSprites();
+	isRestartPressed = false; // Reset the restart flag
+
+}
 
 //background scrolling
 static void drawBackground()
@@ -1039,13 +1050,14 @@ static void doBackground()
 
 void Draw() // draw to screen to show new game state to player
 {
+	spawnEnemies();
 	SDL_SetRenderDrawColor(pRenderer, 5, 5, 15, 255);
 	SDL_RenderClear(pRenderer);
-	
+
 	drawBackground();
-	
+
 	playerSoldier.sprite.Draw(pRenderer);
-	
+
 	playerHealthBar1.Draw(pRenderer);
 	playerHealthBar2.Draw(pRenderer);
 	playerHealthBar3.Draw(pRenderer);
@@ -1087,6 +1099,38 @@ void Draw() // draw to screen to show new game state to player
 	SDL_RenderPresent(pRenderer);
 }
 
+void GameOverScreen()
+{
+	//Game over logic
+	SDL_SetRenderDrawColor(pRenderer, 5, 5, 15, 255);
+	SDL_RenderClear(pRenderer);
+
+	drawBackground();
+
+	//draw the game over text
+	SDL_Color color = { 0, 0, 0, 255 };
+	gameOverSprite.Cleanup();
+	gameOverSprite = Scorpio::Sprite(pRenderer, uiFont, "GAME OVER", color);
+	gameOverSprite.SetPosition(300, 30);
+	gameOverSprite.SetSize(600, 200);
+	gameOverSprite.Draw(pRenderer);
+
+	gameOverSprite2.Cleanup();
+	gameOverSprite2 = Scorpio::Sprite(pRenderer, uiFont, "Press Q to Quit", color);
+	gameOverSprite2.SetPosition(410, 260);
+	gameOverSprite2.SetSize(350, 200);
+	gameOverSprite2.Draw(pRenderer);
+
+	gameOverSprite3.Cleanup();
+	gameOverSprite3 = Scorpio::Sprite(pRenderer, uiFont, "R to Restart", color);
+	gameOverSprite3.SetPosition(410, 420);
+	gameOverSprite3.SetSize(350, 200);
+	gameOverSprite3.Draw(pRenderer);
+
+	//Show the hidden space we were drawing-to called the backbuffer.
+	SDL_RenderPresent(pRenderer);
+}
+
 /**
  * \brief Program Entry Point
  */
@@ -1105,35 +1149,79 @@ int main(int argc, char* args[])
 	Load();
 
 	LoadMedia();
-	
+
 	Start();
-	
-	
+
+	const float MAX_FRAME_TIME = 0.1f; // Maximum frame time to prevent large time steps
+	float accumulated_time = 0.0f; // Accumulated time to handle large time steps
 
 	// Main Game Loop
 	while (isGameRunning)
 	{
-		const auto frame_start = static_cast<float>(SDL_GetTicks());
-
-		Input();
-
-		Update();
-
-		Draw();
-
-		doBackground();
-
-		if (const float frame_time = static_cast<float>(SDL_GetTicks()) - frame_start;
-			frame_time < DELAY_TIME)
+		if (!isGameOver)
 		{
-			SDL_Delay(static_cast<int>(DELAY_TIME - frame_time));
+			const auto frame_start = static_cast<float>(SDL_GetTicks());
+
+			Input();
+
+			Update();
+
+			Draw();
+
+			doBackground();
+
+			if (const float frame_time = static_cast<float>(SDL_GetTicks()) - frame_start;
+				frame_time < DELAY_TIME)
+			{
+				SDL_Delay(static_cast<int>(DELAY_TIME - frame_time));
+			}
+
+			// delta time
+			const auto delta_time = (static_cast<float>(SDL_GetTicks()) - frame_start) / 1000.0f;
+
 		}
+		else
+		{
+			GameOverScreen();
 
-		// delta time
-		const auto delta_time = (static_cast<float>(SDL_GetTicks()) - frame_start) / 1000.0f;
+			//handle game over input
+			SDL_Event event;
+			while (SDL_PollEvent(&event)) //poll until all events are handled
+			{
+				//decide what to do with this event
+				switch (event.type)
+				{
+				case(SDL_KEYDOWN):
+				{
+					SDL_Scancode key = event.key.keysym.scancode;
+					switch (key)
+					{
+					case(SDL_SCANCODE_R):
+					{
+						isRestartPressed = true;
+						break;
+					}
+					case(SDL_SCANCODE_Q):
+					{
+						isQuitPressed = true;
+						break;
+					}
+					}
+				}
+				}
+			}
 
+			if (isRestartPressed)
+			{
+				resetGame();
+			}
+			if (isQuitPressed)
+			{
+				Close();
+			}
+			// Reset game state and start a new game
+		}
 	}
-
 	return 0;
 }
 
