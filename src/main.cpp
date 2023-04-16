@@ -11,36 +11,35 @@
 #include <SDL_mixer.h> // for sound and music
 #include <SDL_ttf.h> // for font
 
-/*
-Use SDL to open window, render some sprites at given locations and scale
-*/
 
-//Global variables
+/// <GLOBAL VARIABLES>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 constexpr float FPS = 60.0f;
 constexpr float DELAY_TIME = 1000.0f / FPS; // target deltaTime in ms
-const int SCREEN_WIDTH = 1200;
-const int SCREEN_HEIGHT = 600;
+float deltaTime = 1.0f / FPS; //time passed between frames in secs
 int backgroundX = 0;
 
-float deltaTime = 1.0f / FPS; //time passed between frames in secs
+//Define screen boundaries
+const int SCREEN_WIDTH = 1200;
+const int SCREEN_HEIGHT = 600;
+const int SCREEN_LEFT = 0;
+const int SCREEN_TOP = 155;
+const int SCREEN_BOTTOM = 435;
 
-SDL_Window* pWindow = nullptr; //This is a point to SDL_Window. It stores a memory location which we can use later.
+//SDL
+SDL_Window* pWindow = nullptr;
 SDL_Renderer* pRenderer = nullptr;
-bool isGameRunning = true;
-bool isGameOver = false;
 SDL_Texture* desertBackground = nullptr;
 
-
-//The music that will be played
+//The music that will be played with sound effects that will be used
 Mix_Music* pMusic = nullptr;
-
-//The sound effects that will be used
 Mix_Chunk* pPlayerFire = nullptr;
 Mix_Chunk* pEnemyFire = nullptr;
 Mix_Chunk* pPlayerDeath = nullptr;
 Mix_Chunk* pEnemyDeath = nullptr;
 Mix_Chunk* pGameOver = nullptr;
-
 int currentAudioVolume = MIX_MAX_VOLUME / 2;
 
 //UI
@@ -48,10 +47,17 @@ TTF_Font* uiFont;
 int scoreCurrent = 0;
 int highScoreCurrent = 0;
 int characterLives = 3;
-
 float enemySpawnDelay = 2.0f;
 float enemySpawnTimer = 0.0f;
 
+//Game state
+bool isGameRunning = true;
+bool isGameOver = false;
+
+/// <SCORPIO NAMESPACE>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Scorpio
 {
 	struct Vec2 //2 dimension vector
@@ -196,6 +202,7 @@ namespace Scorpio
 		{
 			SDL_DestroyTexture(pTexture);
 		}
+
 	}; //struct Sprite
 
 	class Bullet
@@ -306,25 +313,13 @@ namespace Scorpio
 		SDL_bool isColliding = SDL_HasIntersection(&boundsA, &boundsB);
 		return (bool)isColliding;
 
-		//minAx = boundsA.x;
-		//minAy = boundsA.y;
-		//minBx = boundsB.x;
-		//minBy = boundsB.y;
-		//
-		//maxAx = boundsA.x + boundsA.w;
-		//maxAy = boundsA.y + boundsA.h;
-		//maxBx = boundsB.x + boundsB.w;
-		//maxBy = boundsB.y + boundsB.h;
-		//
-		//bool overlapOnX = AreBoundsOverlapping(minAx, maxAx, minBx, maxBx);
-		//bool overlapOnY = AreBoundsOverlapping(minAy, maxAy, minBy, maxBy);
-		//
-		////check if bounds overlap. only when both axis have overlap is there a collision
-		//return overlapOnX && overlapOnY;
-
 	}
 }
 
+/// <SPRITE OBJECTS>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 //Creating sprite objects
 Scorpio::Sprite playerHealthBar1;
 Scorpio::Sprite playerHealthBar2;
@@ -336,12 +331,18 @@ Scorpio::Sprite gameOverSprite2;
 Scorpio::Sprite gameOverSprite3;
 
 Scorpio::Character playerSoldier;
-std::vector<Scorpio::Bullet> playerBulletContainer; //std::vector is a class that allows changing size. This is a dynamic array of Scorpio::Sprite
-
-std::vector<Scorpio::Character> enemyContainer; //container of all enemy ships
+//std::vector is a class that allows changing size. This is a dynamic array of Scorpio::Sprite
+std::vector<Scorpio::Bullet> playerBulletContainer; 
+std::vector<Scorpio::Character> enemyContainer; //container of all enemy scorpions
 std::vector<Scorpio::Bullet> enemyBulletContainer; //container of all enemy bullets(poison)
 
 
+const int SCREEN_RIGHT = SCREEN_WIDTH - playerSoldier.sprite.position.x;
+
+/// <INIT FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 //Initialize opens a window and sets up renderer
 bool Init()
 {
@@ -395,6 +396,10 @@ bool Init()
 	return true;
 }
 
+/// <LOAD MEDIA FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 bool LoadMedia() //Used both Lazy Foo and Parallel Realities tutorials
 {
 	//Loading success flag
@@ -409,14 +414,14 @@ bool LoadMedia() //Used both Lazy Foo and Parallel Realities tutorials
 	}
 
 	//Load sound effects
-	pPlayerFire = Mix_LoadWAV("../Assets/audio/playergun.mp3");
+	pPlayerFire = Mix_LoadWAV("../Assets/audio/playerBullet.mp3");
 	if (pPlayerFire == NULL)
 	{
 		printf("Failed to load player fire sound effect! SDL_mixer Error: %s\n", Mix_GetError());
 		success = false;
 	}
 
-	pEnemyFire = Mix_LoadWAV("../Assets/audio/enemygun.mp3");
+	pEnemyFire = Mix_LoadWAV("../Assets/audio/enemyPoison.mp3");
 	if (pEnemyFire == NULL)
 	{
 		printf("Failed to load enemy fire sound effect! SDL_mixer Error: %s\n", Mix_GetError());
@@ -455,6 +460,10 @@ bool LoadMedia() //Used both Lazy Foo and Parallel Realities tutorials
 	return success;
 }
 
+/// <LOAD HEALTH SPRITES FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 void loadHealthSprites()
 {
 	playerHealthBar1 = Scorpio::Sprite(pRenderer, "../Assets/textures/UI_HEART_FULL.png");
@@ -471,6 +480,10 @@ void loadHealthSprites()
 	playerHealthBar3.position.y = 15;
 }
 
+/// <LOAD FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 //Load textures to be displayed on the screen
 void Load()
 {
@@ -485,6 +498,10 @@ void Load()
 	playerSoldier.sprite.position.y = 430;
 }
 
+/// <START FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 //Called once after Load() and before first Update()
 void Start()
 {
@@ -493,6 +510,10 @@ void Start()
 	Mix_PlayMusic(pMusic, -1);
 }
 
+/// <INPUT FUNCTION VARIABLES>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 //input variables
 bool isUpPressed = false;
 bool isDownPressed = false;
@@ -503,6 +524,10 @@ bool isSoundPressed = false;
 bool isQuitPressed = false;
 bool isRestartPressed = false;
 
+/// <INPUT FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 void Input() //take player input
 {
 	SDL_Event event;
@@ -650,63 +675,10 @@ void Input() //take player input
 	}
 }
 
-void Close() //close the game
-{
-	//iterate through all of the sprites and call cleanup
-	for (auto& bullet : playerBulletContainer)
-	{
-		bullet.sprite.Cleanup();
-	}
-
-	for (auto& bullet : enemyBulletContainer)
-	{
-		bullet.sprite.Cleanup();
-	}
-
-	for (auto& enemy : enemyContainer)
-	{
-		enemy.sprite.Cleanup();
-	}
-
-	playerSoldier.sprite.Cleanup();
-
-	//Free the sound effects
-	Mix_FreeChunk(pPlayerFire);
-	Mix_FreeChunk(pEnemyFire);
-	Mix_FreeChunk(pPlayerDeath);
-	Mix_FreeChunk(pEnemyDeath);
-	Mix_FreeChunk(pGameOver);
-	pPlayerFire = NULL;
-	pEnemyFire = NULL;
-	pPlayerDeath = NULL;
-	pEnemyDeath = NULL;
-	pGameOver = NULL;
-
-	//Free the music
-	Mix_FreeMusic(pMusic);
-	pMusic = NULL;
-
-	//Destroy window    
-	SDL_DestroyRenderer(pRenderer);
-	SDL_DestroyWindow(pWindow);
-	pRenderer = NULL;
-	pWindow = NULL;
-	TTF_CloseFont(uiFont);
-	TTF_Quit();
-
-	//Quit SDL subsystems
-	Mix_Quit();
-	IMG_Quit();
-	SDL_Quit();
-}
-
-// Define screen boundaries
-const int SCREEN_LEFT = 0;
-const int SCREEN_RIGHT = SCREEN_WIDTH - playerSoldier.sprite.position.x;
-const int SCREEN_TOP = 155;
-const int SCREEN_BOTTOM = 435;
-
-
+/// <SPAWN ENEMIES FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 void SpawnEnemy()
 {
 	/*
@@ -741,6 +713,98 @@ void SpawnEnemy()
 	enemySpawnTimer = enemySpawnDelay;
 }
 
+/// <SPAWN ENEMY TIMER FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+void SpawnEnemiesTimer()
+{
+	//spawn enemies on timer and update timer
+	if (enemySpawnTimer <= 0)
+	{
+		SpawnEnemy();
+	}
+	else
+	{
+		enemySpawnTimer -= deltaTime;
+	}
+}
+
+/// <IS SPRITE OFF SCREEN FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+bool IsSpriteOffscreen(Scorpio::Sprite sprite)
+{
+	if (sprite.position.x + sprite.GetSize().x < 0)
+		return true;
+	if (sprite.position.x > SCREEN_WIDTH)
+		return true;
+	if (sprite.position.y + sprite.GetSize().y < 0)
+		return true;
+	if (sprite.position.y > SCREEN_HEIGHT)
+		return true;
+
+	return false;
+}
+
+/// <REMOVE OFFSCREEN SPRITES FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+void RemoveOffscreenSprites()
+{
+	//for each player bullet sprite in container, if offscreen, remove from container
+	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = playerBulletContainer.begin(); bulletIterator != playerBulletContainer.end();)
+	{
+		if (IsSpriteOffscreen(bulletIterator->sprite))
+		{
+			bulletIterator = playerBulletContainer.erase(bulletIterator);
+		}
+		else
+		{
+			bulletIterator++;
+		}
+	}
+	//for each sprite in container, if offscreen, remove from container
+	for (auto enemyIterator = enemyContainer.begin(); enemyIterator != enemyContainer.end();)
+	{
+		if (IsSpriteOffscreen(enemyIterator->sprite))
+		{
+			enemyIterator = enemyContainer.erase(enemyIterator);
+		}
+		else
+		{
+			enemyIterator++;
+		}
+	}
+	//for each enemy bullet in container, if offscreen, remove from container
+	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = enemyBulletContainer.begin(); bulletIterator != enemyBulletContainer.end();)
+	{
+		if (IsSpriteOffscreen(bulletIterator->sprite))
+		{
+			bulletIterator = enemyBulletContainer.erase(bulletIterator);
+		}
+		else
+		{
+			bulletIterator++;
+		}
+	}
+}
+
+/// <ADD SCORE FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+void AddScore(int scoreToAdd)
+{
+	scoreCurrent += scoreToAdd;
+}
+
+/// <UPDATE PLAYER FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 void UpdatePlayer()
 {
 	Scorpio::Vec2 inputVector;
@@ -799,78 +863,10 @@ void UpdatePlayer()
 	playerSoldier.Update();
 }
 
-void AddScore(int scoreToAdd)
-{
-	scoreCurrent += scoreToAdd;
-}
-
-bool isSpriteOffscreen(Scorpio::Sprite sprite)
-{
-	if (sprite.position.x + sprite.GetSize().x < 0)
-		return true;
-	if (sprite.position.x > SCREEN_WIDTH)
-		return true;
-	if (sprite.position.y + sprite.GetSize().y < 0)
-		return true;
-	if (sprite.position.y > SCREEN_HEIGHT)
-		return true;
-
-	return false;
-}
-
-void RemoveOffscreenSprites()
-{
-	//for each player bullet sprite in container, if offscreen, remove from container
-	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = playerBulletContainer.begin(); bulletIterator != playerBulletContainer.end();)
-	{
-		if (isSpriteOffscreen(bulletIterator->sprite))
-		{
-			bulletIterator = playerBulletContainer.erase(bulletIterator);
-		}
-		else
-		{
-			bulletIterator++;
-		}
-	}
-	//for each sprite in container, if offscreen, remove from container
-	for (auto enemyIterator = enemyContainer.begin(); enemyIterator != enemyContainer.end();)
-	{
-		if (isSpriteOffscreen(enemyIterator->sprite))
-		{
-			enemyIterator = enemyContainer.erase(enemyIterator);
-		}
-		else
-		{
-			enemyIterator++;
-		}
-	}
-	//for each enemy bullet in container, if offscreen, remove from container
-	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = enemyBulletContainer.begin(); bulletIterator != enemyBulletContainer.end();)
-	{
-		if (isSpriteOffscreen(bulletIterator->sprite))
-		{
-			bulletIterator = enemyBulletContainer.erase(bulletIterator);
-		}
-		else
-		{
-			bulletIterator++;
-		}
-	}
-}
-
-void spawnEnemies()
-{
-	//spawn enemies on timer and update timer
-	if (enemySpawnTimer <= 0)
-	{
-		SpawnEnemy();
-	}
-	else
-	{
-		enemySpawnTimer -= deltaTime;
-	}
-}
-
+/// <UPDATE FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 void Update() // called every frame at FPS..FPS is declared at the top
 {
 	RemoveOffscreenSprites();
@@ -900,6 +896,7 @@ void Update() // called every frame at FPS..FPS is declared at the top
 			}
 		}
 	}
+
 	UpdatePlayer();
 
 	//update player bullets 
@@ -1007,24 +1004,13 @@ void Update() // called every frame at FPS..FPS is declared at the top
 
 	}
 }
-void resetGame()
-{
-	//Check if the score was higher than the current high score. If it is, then high score will become equal to the score
-	if (scoreCurrent > highScoreCurrent)
-	{
-		highScoreCurrent = scoreCurrent;
-	}
 
-	scoreCurrent = 0;
-	characterLives = 3;
-	isGameOver = false;
-	loadHealthSprites();
-	isRestartPressed = false; // Reset the restart flag
-
-}
-
+/// <DRAW BACKGROUND FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 //background scrolling
-static void drawBackground()
+static void DrawBackground()
 {
 	SDL_Rect dest;
 	int x;
@@ -1040,7 +1026,11 @@ static void drawBackground()
 	}
 }
 
-static void doBackground()
+/// <DO BACKGROUND FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+static void DoBackground()
 {
 	if (--backgroundX < -SCREEN_WIDTH)
 	{
@@ -1048,13 +1038,17 @@ static void doBackground()
 	}
 }
 
+/// <DRAW FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 void Draw() // draw to screen to show new game state to player
 {
-	spawnEnemies();
+	SpawnEnemiesTimer();
 	SDL_SetRenderDrawColor(pRenderer, 5, 5, 15, 255);
 	SDL_RenderClear(pRenderer);
 
-	drawBackground();
+	DrawBackground();
 
 	playerSoldier.sprite.Draw(pRenderer);
 
@@ -1099,13 +1093,17 @@ void Draw() // draw to screen to show new game state to player
 	SDL_RenderPresent(pRenderer);
 }
 
+/// <GAMEOVER SCREEN FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 void GameOverScreen()
 {
 	//Game over logic
 	SDL_SetRenderDrawColor(pRenderer, 5, 5, 15, 255);
 	SDL_RenderClear(pRenderer);
 
-	drawBackground();
+	DrawBackground();
 
 	//draw the game over text
 	SDL_Color color = { 0, 0, 0, 255 };
@@ -1131,17 +1129,167 @@ void GameOverScreen()
 	SDL_RenderPresent(pRenderer);
 }
 
-/**
- * \brief Program Entry Point
- */
+/// <GAMEOVER SCREEN INPUT FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+void GameOverScreenInput()
+{
+	//handle game over input
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) //poll until all events are handled
+	{
+		//decide what to do with this event
+		switch (event.type)
+		{
+		case(SDL_KEYDOWN):
+		{
+			SDL_Scancode key = event.key.keysym.scancode;
+			switch (key)
+			{
+			case(SDL_SCANCODE_R):
+			{
+				isRestartPressed = true;
+				break;
+			}
+			case(SDL_SCANCODE_Q):
+			{
+				isQuitPressed = true;
+				break;
+			}
+			}
+		}
+		}
+	}
+}
+
+/// <RESTART FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+void Restart()
+{
+	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = enemyBulletContainer.begin(); bulletIterator != enemyBulletContainer.end();)
+	{
+		Scorpio::Sprite& enemyBullet = bulletIterator->sprite;
+		//remove this element from container.
+		bulletIterator = enemyBulletContainer.erase(bulletIterator); //erase function returns new index
+		if (bulletIterator != enemyBulletContainer.end())  bulletIterator++;
+
+	}
+
+	//for every player bullet
+	for (std::vector<Scorpio::Bullet>::iterator bulletIterator = playerBulletContainer.begin(); bulletIterator != playerBulletContainer.end();)
+	{
+		//for every enemy sprite
+		for (auto enemyIterator = enemyContainer.begin(); enemyIterator != enemyContainer.end();)
+		{
+			//test for collision between player bullet and enemy
+			
+				//destroy bullet
+				bulletIterator = playerBulletContainer.erase(bulletIterator);
+
+				//destroy enemy
+				enemyIterator = enemyContainer.erase(enemyIterator);
+				Mix_PlayChannel(-1, pEnemyDeath, 0);
+				AddScore(10); //not sure how many points we want to award, but let's start with 10 for each monster
+
+				//if last object is destroyed, then stop comparing
+				if (bulletIterator == playerBulletContainer.end())
+					break;
+
+			if (enemyIterator != enemyContainer.end())  enemyIterator++;
+		}
+		if (bulletIterator != playerBulletContainer.end())  bulletIterator++; //continue as long as not the end
+
+	}
+
+	if (isRestartPressed)
+	{
+	
+		highScoreCurrent += scoreCurrent;
+		scoreCurrent = 0;
+		characterLives = 3;
+		isGameOver = false;
+		isRestartPressed = false; // Reset the restart flag
+		loadHealthSprites();
+		Start();
+	
+	}
+	else if (isQuitPressed)
+	{
+		isGameRunning = false;
+	}
+	
+}
+
+/// <CLOSE FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+void Close() //close the game
+{
+	//iterate through all of the sprites and call cleanup
+	for (auto& bullet : playerBulletContainer)
+	{
+		bullet.sprite.Cleanup();
+	}
+
+	for (auto& bullet : enemyBulletContainer)
+	{
+		bullet.sprite.Cleanup();
+	}
+
+	for (auto& enemy : enemyContainer)
+	{
+		enemy.sprite.Cleanup();
+	}
+
+	playerSoldier.sprite.Cleanup();
+
+	//Free the sound effects
+	Mix_FreeChunk(pPlayerFire);
+	Mix_FreeChunk(pEnemyFire);
+	Mix_FreeChunk(pPlayerDeath);
+	Mix_FreeChunk(pEnemyDeath);
+	Mix_FreeChunk(pGameOver);
+	pPlayerFire = NULL;
+	pEnemyFire = NULL;
+	pPlayerDeath = NULL;
+	pEnemyDeath = NULL;
+	pGameOver = NULL;
+
+	//Free the music
+	Mix_FreeMusic(pMusic);
+	pMusic = NULL;
+
+	//Destroy window    
+	SDL_DestroyRenderer(pRenderer);
+	SDL_DestroyWindow(pWindow);
+	pRenderer = NULL;
+	pWindow = NULL;
+	TTF_CloseFont(uiFont);
+	TTF_Quit();
+
+	//Quit SDL subsystems
+	Mix_Quit();
+	IMG_Quit();
+	SDL_Quit();
+}
+
+/// <MAIN FUNCTION>
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* args[])
 {
-
-	// show and position the application console
+	//show and position the application console
 	AllocConsole();
 	auto console = freopen("CON", "w", stdout);
 	const auto window_handle = GetConsoleWindow();
-	MoveWindow(window_handle, 100, 700, 800, 200, TRUE);
+	MoveWindow(window_handle, 100, 700, 800, 200, TRUE);///
+	const float MAX_FRAME_TIME = 0.1f; // Maximum frame time to prevent large time steps
+	float accumulated_time = 0.0f; // Accumulated time to handle large time steps
 
 	// Display Main SDL Window
 	isGameRunning = Init();
@@ -1152,13 +1300,11 @@ int main(int argc, char* args[])
 
 	Start();
 
-	const float MAX_FRAME_TIME = 0.1f; // Maximum frame time to prevent large time steps
-	float accumulated_time = 0.0f; // Accumulated time to handle large time steps
-
+	
 	// Main Game Loop
 	while (isGameRunning)
 	{
-		if (!isGameOver)
+		while (!isGameOver)
 		{
 			const auto frame_start = static_cast<float>(SDL_GetTicks());
 
@@ -1168,7 +1314,7 @@ int main(int argc, char* args[])
 
 			Draw();
 
-			doBackground();
+			DoBackground();
 
 			if (const float frame_time = static_cast<float>(SDL_GetTicks()) - frame_start;
 				frame_time < DELAY_TIME)
@@ -1178,50 +1324,19 @@ int main(int argc, char* args[])
 
 			// delta time
 			const auto delta_time = (static_cast<float>(SDL_GetTicks()) - frame_start) / 1000.0f;
-
 		}
-		else
-		{
-			GameOverScreen();
 
-			//handle game over input
-			SDL_Event event;
-			while (SDL_PollEvent(&event)) //poll until all events are handled
-			{
-				//decide what to do with this event
-				switch (event.type)
-				{
-				case(SDL_KEYDOWN):
-				{
-					SDL_Scancode key = event.key.keysym.scancode;
-					switch (key)
-					{
-					case(SDL_SCANCODE_R):
-					{
-						isRestartPressed = true;
-						break;
-					}
-					case(SDL_SCANCODE_Q):
-					{
-						isQuitPressed = true;
-						break;
-					}
-					}
-				}
-				}
-			}
+		GameOverScreen();
+		
+		GameOverScreenInput();
+		
+		Restart();
 
-			if (isRestartPressed)
-			{
-				resetGame();
-			}
-			if (isQuitPressed)
-			{
-				Close();
-			}
-			// Reset game state and start a new game
-		}
 	}
+
+	Close();
+
 	return 0;
 }
+
 
